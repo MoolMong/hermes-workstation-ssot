@@ -84,3 +84,72 @@ connection/validation logic, any Hermes/Runner/Monitor/Verifier code, any
 Discord integration, or any AMI sanitization logic. Introducing any of
 those now would itself be a Milestone-0 Definition-of-Done violation
 (scope creep ahead of the milestone that owns it).
+
+## Milestone 1 Definition of Done (this change)
+
+Milestone 1 is done when all of the following are true:
+
+- [x] `bootstrap/install.sh` idempotently bootstraps a host: OS
+      prerequisites, Docker engine + compose, the secret-free
+      `/opt/hermes-data` tree, non-secret rendered config, and the single
+      `systemd/hermes.service` unit — installed and `daemon-reload`d, but
+      never enabled or started.
+- [x] `--dry-run` makes zero filesystem/package/systemd changes.
+- [x] Package installation stages fail closed on an unsupported host, a
+      missing `apt-get`, or a non-root invocation — never silently report
+      success without verifying the resulting state.
+- [x] Every file `install.sh` writes or renders carries a provenance
+      comment tracing it back to this repository
+      (`BUILD_DIRECTIVE.md` §7).
+- [x] Data-root directories are `0700` and credential-adjacent rendered
+      files are `0600`, from the first bootstrap onward.
+- [x] `docker/Dockerfile` builds the single Hermes Agent image from a
+      digest-pinned base image; downloads the installer from its
+      immutable, commit-scoped `raw.githubusercontent.com` URL; verifies
+      the installer's SHA-256 (parsed from `bootstrap/hermes-installer.sha256`,
+      never duplicated as a hardcoded `ARG` default) strictly before
+      executing it; passes the same pinned commit
+      (`bootstrap/hermes-commit.pin`) to `--commit`; and builds with
+      `--skip-setup` so the image stays credential-free.
+- [x] `docker/docker-compose.yml` declares exactly one service/container
+      (`hermes`, running `hermes gateway`) with `restart: "no"` — Docker
+      does not supervise; `systemd/hermes.service` does, with a bounded
+      restart policy (`StartLimitIntervalSec`/`StartLimitBurst`/
+      `Restart=on-failure`/`RestartSec`), so the two never overlap into a
+      double restart loop for one failure.
+- [x] Exactly one systemd unit exists in this repository; there is no
+      `hermes-gateway.service` or any second unit.
+- [x] `bash tests/bootstrap/run.sh` — a `bash -n` syntax check over every
+      Milestone 1 shell script, plus the full Milestone 1 test suite
+      (dry-run, idempotency including the systemd unit, provenance,
+      rendered-config content, permissions, Compose single-service shape,
+      systemd bounded supervision and no-enable/no-start, Dockerfile
+      pin/checksum/URL/ordering guarantees, package-stage fail-closed
+      behavior, and absence of any Milestone 2+ file) — exits 0.
+- [x] `bash tests/check_milestone0.sh` exits 0, updated to be
+      milestone-aware so it continues to check what it always checked
+      (documents, secret model, forbidden-scope, no undeclared/scope-creep
+      files) without permanently expecting a Milestone-0-only tree.
+- [x] No Milestone 2+ functionality exists: no `hermes-connect`/
+      `hermes-doctor`, no credential handling, no Hermes/Runner/Monitor/
+      Verifier code, no Discord integration, no second systemd unit.
+- [x] `evidence/milestone-1/TASK.md` records the Context/Constraints/
+      Acceptance Criteria this milestone worked against, and
+      `evidence/milestone-1/TEST_EVIDENCE.md` records the actual
+      deterministic test run this Definition of Done relies on.
+- [x] A fresh independent read-only Claude Code verifier checked the final
+      Milestone 1 implementation against `BUILD_DIRECTIVE.md`, reran the
+      deterministic gates, inspected upstream installer compatibility and
+      immutable pins, and returned PASS. The chronological record is
+      `evidence/milestone-1/VERIFICATION.md`; it also preserves the explicit
+      BLOCKED status of fresh EC2 and Docker runtime validation.
+- [x] No commit/push/PR/deploy has been performed by the Claude authoring
+      worker for this change — Git operations remain with the operator/
+      orchestrator per `CLAUDE.md` "Git discipline".
+
+The implementation-content items above are satisfied and recorded in
+`evidence/milestone-1/TEST_EVIDENCE.md`; independent semantic verification
+is recorded in `evidence/milestone-1/VERIFICATION.md`. Milestone 1 is
+**complete** within the explicitly documented evidence boundary. Fresh EC2
+and Docker runtime validation remain BLOCKED and are not claimed as PASS.
+Milestone 2 is next but is not implemented by this change.

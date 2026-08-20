@@ -8,6 +8,7 @@ config/*
 # Never track host-local runtime/state data.
 /opt-data/
 hermes-data/
+.hermes-work-status
 auth/
 *.session
 *.token

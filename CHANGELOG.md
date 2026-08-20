@@ -6,6 +6,82 @@ milestones per `BUILD_DIRECTIVE.md` §12.
 
 ## [Unreleased]
 
+## [0.1.0-m1] — 2026-08-20 — Milestone 1: Clean bootstrap
+
+### Added
+
+- `bootstrap/install.sh` — idempotent host bootstrap: OS prerequisites
+  (`git`, `curl`, `xz-utils`, `ca-certificates`), the Docker engine +
+  compose command (fail-closed, Ubuntu/Debian `apt` only, deterministic
+  package-set fallback with post-install verification), the secret-free
+  `/opt/hermes-data` tree (`0700` dirs), non-secret rendered config
+  (`0600`), and the single `systemd/hermes.service` unit (installed and
+  `daemon-reload`d, never enabled or started). Supports `--dry-run`;
+  every written file carries a provenance header.
+- `bootstrap/hermes-commit.pin`, `bootstrap/hermes-installer.sha256` —
+  the pinned Hermes Agent commit (`044acf2bf700b8452e903f035406091146eb0245`,
+  `NousResearch/hermes-agent`) and the SHA-256 of its installer script at
+  that commit, fetched directly (no execution) on 2026-08-20.
+- `docker/Dockerfile` — digest-pinned base image; downloads the installer
+  from its immutable, commit-scoped `raw.githubusercontent.com` URL;
+  verifies its SHA-256 before executing it; passes the same pinned commit
+  to `--commit`; builds with `--skip-setup` so the image stays
+  credential-free. Parses both pins from the `COPY`'d pin files — no
+  duplicated hardcoded `ARG` defaults.
+- `docker/docker-compose.yml` — exactly one service (`hermes`, container
+  name `hermes`, `command: ["hermes", "gateway"]`, `restart: "no"`).
+- `docker/entrypoint.sh` — first-run-only data-volume seeding from
+  credential-free build-time scaffolding.
+- `systemd/hermes.service` — the only systemd unit; bounded restart
+  policy.
+- `tests/bootstrap/run.sh` — syntax checks plus the full Milestone 1 test
+  suite runner.
+- `tests/bootstrap/test_dry_run.sh`, `test_idempotency.sh`,
+  `test_file_provenance.sh`, `test_rendered_config.sh`,
+  `test_permissions.sh`, `test_docker_compose.sh`,
+  `test_systemd_supervision.sh`, `test_dockerfile_pins.sh`,
+  `test_fail_closed.sh`, `test_no_m2_scope.sh`.
+- `evidence/milestone-1/TASK.md`, `evidence/milestone-1/TEST_EVIDENCE.md`.
+
+### Fixed
+
+- `install.sh`'s systemd-unit provenance header embedded the wall-clock
+  render timestamp, so re-running `install.sh` always rewrote (and
+  `daemon-reload`d) the unit even with no substantive change — an
+  idempotency defect, found by `tests/bootstrap/test_idempotency.sh`.
+  Fixed by comparing rendered content with that one volatile clause
+  stripped, so only a real change to repo commit or unit content triggers
+  a rewrite.
+- `tests/check_milestone0.sh`'s repository-tree and skeleton-directory
+  checks were Milestone-0-only and would have failed permanently once
+  Milestone 1 added real files to `bootstrap/`, `docker/`, `systemd/`.
+  Made milestone-aware (a `CURRENT_MILESTONE` constant, cross-checked
+  against `MILESTONES.md`'s own status table) instead of weakened.
+
+### Verification evidence
+
+- `bash tests/bootstrap/run.sh` and `bash tests/check_milestone0.sh` both
+  pass deterministically; see
+  [`evidence/milestone-1/TEST_EVIDENCE.md`](evidence/milestone-1/TEST_EVIDENCE.md)
+  for the recorded run output and exact check counts.
+- A fresh independent read-only Claude Code verifier reran the deterministic
+  gates, inspected the implementation and immutable upstream inputs, and
+  returned PASS. The chronological record is
+  [`evidence/milestone-1/VERIFICATION.md`](evidence/milestone-1/VERIFICATION.md).
+- Fresh EC2 and Docker runtime validation remain BLOCKED/not run; no PASS is
+  claimed for those unavailable gates.
+
+### Process note
+
+The Claude authoring worker did not commit or push this change, start or
+enable any service, or run a Docker build. Per the current operating
+instructions, Git operations remain with the operator/orchestrator.
+
+### Not included (by design)
+
+Milestones 2–7 (connection UX, basic work path, verifier, monitor/
+recovery, parallel execution, image readiness) — see `MILESTONES.md`.
+
 ## [0.1.0-m0] — 2026-08-20 — Milestone 0: Repository and design
 
 ### Added

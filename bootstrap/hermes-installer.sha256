@@ -1,0 +1,22 @@
+# Repository-recorded SHA-256 for the official Hermes Agent installer
+# script. docker/Dockerfile downloads the installer fresh at build time and
+# refuses to execute it (`sha256sum -c`) unless the computed digest matches
+# this value exactly. This pins installer *content*, independent of
+# hermes-commit.pin (which controls what the installer then checks out).
+#
+# URL fetched:  https://raw.githubusercontent.com/NousResearch/hermes-agent/044acf2bf700b8452e903f035406091146eb0245/scripts/install.sh
+#               (the same immutable, commit-pinned URL docker/Dockerfile
+#               verifies against at build time — see hermes-commit.pin).
+# Fetched:      2026-08-20, by directly downloading the script (no
+#               execution) and computing sha256sum, per the "download then
+#               verify a repository-recorded SHA-256 before execution"
+#               instruction. See evidence/milestone-1/TASK.md.
+#
+# Maintenance: if the installer's own maintainers ship a new install.sh,
+# any build using this file will start failing the checksum check (fail
+# closed, by design). Re-fetch and re-record the digest below in its own
+# reviewed commit — never silently, and never skip the check to work
+# around a mismatch.
+#
+# Format: standard `sha256sum` line, usable directly with `sha256sum -c`.
+0582d9b1562efcb6e0ac62f4451021667830b830a72ce7d91eaea9fee8b6c09b  hermes-install.sh

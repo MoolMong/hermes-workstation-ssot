@@ -1,0 +1,20 @@
+[Unit]
+Description=Hermes Workstation - Hermes agent container (gateway process: orchestration, messaging, cron)
+Documentation=https://github.com/ (see this repository's README.md)
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=simple
+WorkingDirectory=@@REPO_ROOT@@
+ExecStart=/usr/bin/docker compose -f @@REPO_ROOT@@/docker/docker-compose.yml up hermes
+ExecStop=/usr/bin/docker compose -f @@REPO_ROOT@@/docker/docker-compose.yml stop hermes
+Environment=HERMES_DATA_ROOT=@@DATA_ROOT@@
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

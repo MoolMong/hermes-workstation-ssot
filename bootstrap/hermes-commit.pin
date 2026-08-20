@@ -1,0 +1,21 @@
+# Repository-recorded pin for the Hermes Agent source commit.
+#
+# docker/Dockerfile COPYs this file, parses its first non-comment value into
+# the HERMES_COMMIT shell variable during the image build, and passes that
+# exact value to the official Hermes installer as --commit. No Docker ARG
+# or duplicated default carries this pin, so every image built from this
+# repository checks out the exact same Hermes Agent commit until this file
+# is deliberately updated.
+#
+# This is a source-content pin (which commit gets checked out), separate
+# from hermes-installer.sha256 (which pins the installer *script* itself,
+# independent of what it then checks out).
+#
+# Recorded: 2026-08-20, per explicit instruction to pin Hermes to this
+# commit rather than floating main (BUILD_DIRECTIVE.md governs; this file
+# is the traceable, single place that pin is recorded and configured from
+# — see evidence/milestone-1/TASK.md).
+#
+# Update procedure: change the SHA below in its own reviewed commit. Do
+# not float this to a branch name — --commit pins an exact revision.
+044acf2bf700b8452e903f035406091146eb0245

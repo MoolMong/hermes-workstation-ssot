@@ -1,0 +1,45 @@
+# Hermes Workstation SSOT — compose definition (Milestone 1)
+#
+# Exactly ONE Hermes container/service (BUILD_DIRECTIVE.md §1: Hermes is
+# the orchestrator; there is no second orchestrator runtime). Hermes
+# orchestration happens inside its own `hermes gateway` process, so this
+# is the process the single container runs. Monitor's system_check
+# (BUILD_DIRECTIVE.md §1) watches "Hermes container" (Docker-layer: is the
+# container up) and "Hermes Gateway" (application-layer: is the gateway
+# process inside that same container responding, e.g. Discord
+# connectivity) as two CHECKS on this one container, not two containers —
+# see ARCHITECTURE.md §9 for the full reasoning.
+#
+# Supervision: this file intentionally sets `restart: "no"`. systemd
+# (systemd/hermes.service) is the single bounded supervisor for this
+# container — see that unit's StartLimitIntervalSec / StartLimitBurst /
+# Restart=on-failure / RestartSec. Letting Docker's own restart policy AND
+# systemd both restart the same failure would create two overlapping,
+# effectively-infinite restart loops for one fault; this repository picks
+# systemd as the one supervisor instead of layering both.
+#
+# No secrets live in this file. config/*.env are instance-local,
+# git-ignored, and optional at this milestone (created by hermes-connect in
+# Milestone 2) — `required: false` lets this file validate and run before
+# they exist.
+
+services:
+  hermes:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: hermes-workstation/hermes-agent:m1
+    container_name: hermes
+    command: ["hermes", "gateway"]
+    restart: "no"
+    volumes:
+      - ${HERMES_DATA_ROOT:-/opt/hermes-data}:/data
+    env_file:
+      - path: ../config/discord.env
+        required: false
+      - path: ../config/openai.env
+        required: false
+      - path: ../config/claude.env
+        required: false
+      - path: ../config/github.env
+        required: false

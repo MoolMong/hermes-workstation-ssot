@@ -80,7 +80,10 @@ PASS. Task status may become `COMPLETED` only after Verifier PASS.
 GitHub is the remote source/code collaboration layer. The repository
 itself is the SSOT for workstation deployment.
 
-None of these components are implemented yet. This is Milestone 0.
+None of Hermes/Runner/Monitor/Verifier are implemented yet — they begin at
+Milestone 3 (Runner) and continue through Milestone 5 (Monitor). Milestone
+1 (current) implements only the host/image bootstrap described in §6
+below, not any of these logical components.
 
 ## 4. Task state (design, not yet implemented)
 
@@ -137,7 +140,7 @@ the smallest additional component required:
 
 One understandable process or script is preferred over several services.
 Complexity must be justified by an observed failure mode, not anticipated
-elegance. As of Milestone 0, **none of the above are present, and none are
+elegance. As of Milestone 1, **none of the above are present, and none are
 planned** — see [`DEVIATIONS.md`](DEVIATIONS.md).
 
 ## 6. Proposed repository tree
@@ -163,6 +166,8 @@ CLAUDE.md                              (M0)
 bootstrap/
   README.md                            (M0 — placeholder)
   install.sh                           (M1)
+  hermes-commit.pin                    (M1)
+  hermes-installer.sha256              (M1)
   connect.sh                           (M2)
   doctor.sh                            (M2)
 
@@ -175,14 +180,14 @@ config/
 
 systemd/
   README.md                            (M0 — placeholder)
-  hermes.service                       (M1)
-  hermes-gateway.service               (M1)
+  hermes.service                       (M1 — the only systemd unit)
   hermes-monitor.service               (M5)
 
 docker/
   README.md                            (M0 — placeholder)
   Dockerfile                           (M1)
   docker-compose.yml                   (M1)
+  entrypoint.sh                        (M1)
 
 scripts/
   README.md                            (M0 — placeholder)
@@ -192,6 +197,9 @@ scripts/
 
 evidence/
   milestone-0/VERIFICATION.md          (M0 — durable verifier record)
+  milestone-1/TASK.md                  (M1 — execution specification)
+  milestone-1/TEST_EVIDENCE.md         (M1 — deterministic evidence)
+  milestone-1/VERIFICATION.md          (M1 — verifier record)
 
 tests/
   check_milestone0.sh                  (M0)
@@ -208,6 +216,15 @@ tests/
 here only to make the target shape explicit. Creating empty placeholder
 directories for tests before there is anything to test would itself be
 scope creep, so they are deferred to the milestone that needs them.
+
+There is exactly one systemd unit (`hermes.service`) and exactly one
+Docker Compose service/container (`hermes`, running `hermes gateway`).
+"Hermes Gateway" in the Monitor's `system_check` (§3 above) is a
+logical/application-layer check on that one container's one process, not
+a second container or a second unit — an earlier draft of this tree
+listed a separate `hermes-gateway.service`; that was corrected during
+Milestone 1 to satisfy the "exactly one systemd unit" bootstrap
+constraint.
 
 ## 7. What may be reused from the existing Factory/EC2
 

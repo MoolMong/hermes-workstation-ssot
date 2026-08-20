@@ -141,6 +141,12 @@ while IFS= read -r -d '' f; do
   if [[ "$base" =~ ^($ALLOWED_FORBIDDEN_MENTION_FILES)$ ]]; then
     continue
   fi
+  # Per WORK_PROTOCOL.md, milestone TASK.md files must state constraints and
+  # exclusions explicitly. Mentioning forbidden components there documents
+  # that they are prohibited; it is not implementation evidence.
+  if [[ "$rel" == evidence/milestone-*/TASK.md ]]; then
+    continue
+  fi
   for pat in "${FORBIDDEN_TECH_PATTERNS[@]}"; do
     if grep -qi "$pat" "$f" 2>/dev/null; then
       IMPL_HITS="$IMPL_HITS\n$rel (matched: $pat)"
@@ -194,16 +200,63 @@ done
 echo
 
 # ---------------------------------------------------------------------------
-# 5. Repository tree consistency (ARCHITECTURE.md §6 vs. disk)
+# 5. Repository tree consistency (ARCHITECTURE.md §6 vs. disk), milestone-
+#    aware so this script keeps being a meaningful regression check after
+#    Milestone 0 instead of permanently expecting an Milestone-0-only tree.
+#
+#    CURRENT_MILESTONE is the highest milestone whose implementation has
+#    started in this repository. Bump it in the same change that starts a
+#    new milestone's implementation, and only then. It is deliberately a
+#    plain constant, not derived by parsing prose out of MILESTONES.md —
+#    the sanity check right below cross-checks it against MILESTONES.md's
+#    status table instead, so a forgotten bump (or a bump with no matching
+#    status-table update) fails loudly rather than silently drifting.
 # ---------------------------------------------------------------------------
+CURRENT_MILESTONE=1
+
 echo "-- 5. Repository tree consistency --"
+
+# 5a. CURRENT_MILESTONE must match MILESTONES.md's own status table: the
+# row for CURRENT_MILESTONE must not say "Planned", and (unless it's the
+# last milestone) the row for CURRENT_MILESTONE+1 must still say "Planned".
+# This keeps the constant above honest without needing this script to
+# parse arbitrary status prose to derive it.
+if [ -f MILESTONES.md ]; then
+  milestone_status() {
+    awk -F'|' -v n="$1" '{
+      gsub(/^[ \t]+|[ \t]+$/, "", $2);
+      if ($2 == n) { gsub(/^[ \t]+|[ \t]+$/, "", $4); print $4; exit }
+    }' MILESTONES.md
+  }
+  cur_status="$(milestone_status "$CURRENT_MILESTONE")"
+  if [ -n "$cur_status" ] && ! echo "$cur_status" | grep -qi 'planned'; then
+    pass "MILESTONES.md marks milestone $CURRENT_MILESTONE as not-Planned (status: $cur_status), matching CURRENT_MILESTONE=$CURRENT_MILESTONE in this script"
+  else
+    fail "MILESTONES.md status for milestone $CURRENT_MILESTONE is '$cur_status' — does not confirm CURRENT_MILESTONE=$CURRENT_MILESTONE in this script; update MILESTONES.md or this constant together"
+  fi
+  if [ "$CURRENT_MILESTONE" -lt 7 ]; then
+    next_status="$(milestone_status "$((CURRENT_MILESTONE + 1))")"
+    if echo "$next_status" | grep -qi 'planned'; then
+      pass "MILESTONES.md still marks milestone $((CURRENT_MILESTONE + 1)) as Planned (sequencing rule respected)"
+    else
+      fail "MILESTONES.md status for milestone $((CURRENT_MILESTONE + 1)) is '$next_status', not Planned — either that milestone started (bump CURRENT_MILESTONE in this script) or MILESTONES.md regressed"
+    fi
+  fi
+else
+  fail "MILESTONES.md does not exist, cannot cross-check CURRENT_MILESTONE"
+fi
+
 if [ -f ARCHITECTURE.md ]; then
   TREE_BLOCK=$(awk '/^## 6\. Proposed repository tree/{flag=1} flag && /^```text$/{c++; if (c==1) {next}} flag && /^```$/{if(c==1) exit} c==1 {print}' ARCHITECTURE.md)
 
-  M0_MISSING=0
-  M0_OK=0
+  CUR_MISSING=0
+  CUR_OK=0
   FUTURE_PRESENT=0
   FUTURE_OK=0
+  # path -> milestone, for every path declared anywhere in the tree,
+  # regardless of milestone. Used by section 6 to detect undeclared files.
+  DECLARED_PATHS=()
+  DECLARED_MSTONES=()
   current_dir=""
   DIR_RE='^[A-Za-z0-9_.]+/$'
   CHILD_RE='^  ([A-Za-z0-9_./-]+)[[:space:]]+\((M[0-9])[^)]*\)$'
@@ -226,33 +279,37 @@ if [ -f ARCHITECTURE.md ]; then
       continue
     fi
 
-    if [ "$mstone" = "M0" ]; then
+    DECLARED_PATHS+=("$path")
+    DECLARED_MSTONES+=("$mstone")
+
+    mstone_num="${mstone#M}"
+    if [ "$mstone_num" -le "$CURRENT_MILESTONE" ]; then
       if [ -e "$path" ]; then
-        M0_OK=$((M0_OK + 1))
+        CUR_OK=$((CUR_OK + 1))
       else
-        M0_MISSING=$((M0_MISSING + 1))
-        echo "  missing M0 path declared in ARCHITECTURE.md: $path"
+        CUR_MISSING=$((CUR_MISSING + 1))
+        echo "  missing $mstone path declared in ARCHITECTURE.md: $path"
       fi
     else
       if [ -e "$path" ]; then
         FUTURE_PRESENT=$((FUTURE_PRESENT + 1))
-        echo "  path declared for $mstone already exists (should not yet): $path"
+        echo "  path declared for $mstone already exists (should not yet, current milestone is M$CURRENT_MILESTONE): $path"
       else
         FUTURE_OK=$((FUTURE_OK + 1))
       fi
     fi
   done <<< "$TREE_BLOCK"
 
-  if [ "$M0_MISSING" -eq 0 ] && [ "$M0_OK" -gt 0 ]; then
-    pass "all $M0_OK Milestone-0 paths in ARCHITECTURE.md's tree exist on disk"
+  if [ "$CUR_MISSING" -eq 0 ] && [ "$CUR_OK" -gt 0 ]; then
+    pass "all $CUR_OK Milestone 0-$CURRENT_MILESTONE paths in ARCHITECTURE.md's tree exist on disk"
   else
-    fail "$M0_MISSING Milestone-0 path(s) declared in ARCHITECTURE.md are missing on disk"
+    fail "$CUR_MISSING path(s) declared for Milestone 0-$CURRENT_MILESTONE in ARCHITECTURE.md are missing on disk"
   fi
 
   if [ "$FUTURE_PRESENT" -eq 0 ]; then
-    pass "no Milestone 1-7 path from ARCHITECTURE.md's tree exists yet ($FUTURE_OK confirmed absent)"
+    pass "no path beyond Milestone $CURRENT_MILESTONE from ARCHITECTURE.md's tree exists yet ($FUTURE_OK confirmed absent)"
   else
-    fail "$FUTURE_PRESENT Milestone 1-7 path(s) already exist on disk (scope creep ahead of milestone)"
+    fail "$FUTURE_PRESENT path(s) beyond Milestone $CURRENT_MILESTONE already exist on disk (scope creep ahead of milestone)"
   fi
 else
   fail "ARCHITECTURE.md does not exist, cannot check tree consistency"
@@ -260,16 +317,30 @@ fi
 echo
 
 # ---------------------------------------------------------------------------
-# 6. Skeleton directories contain only a README.md placeholder
+# 6. Skeleton directories contain only what ARCHITECTURE.md's tree declares
+#    for Milestone 0-$CURRENT_MILESTONE — no undeclared or future-milestone
+#    files. This replaces the Milestone-0-only "only a README.md" check:
+#    that check would itself now be a false failure once Milestone 1 adds
+#    real files, without actually catching any real scope-creep risk that
+#    section 5's future-path check doesn't already cover.
 # ---------------------------------------------------------------------------
-echo "-- 6. Skeleton directories are placeholder-only --"
+echo "-- 6. Skeleton directories contain no undeclared files --"
 for d in bootstrap docker systemd scripts; do
   if [ -d "$d" ]; then
-    entries=$(find "$d" -mindepth 1 | sort)
-    if [ "$entries" = "$d/README.md" ]; then
-      pass "$d/ contains only README.md (no functional code yet)"
+    entries=$(find "$d" -mindepth 1 -type f | sort)
+    undeclared=""
+    while IFS= read -r entry; do
+      [ -z "$entry" ] && continue
+      declared=0
+      for p in "${DECLARED_PATHS[@]}"; do
+        [ "$p" = "$entry" ] && { declared=1; break; }
+      done
+      [ "$declared" -eq 0 ] && undeclared="$undeclared $entry"
+    done <<< "$entries"
+    if [ -z "$undeclared" ]; then
+      pass "$d/ contains only files declared in ARCHITECTURE.md's tree (no undeclared/scope-creep files)"
     else
-      fail "$d/ contains unexpected entries: $(echo "$entries" | tr '\n' ' ')"
+      fail "$d/ contains file(s) not declared in ARCHITECTURE.md's tree:$undeclared"
     fi
   else
     fail "$d/ directory does not exist"
