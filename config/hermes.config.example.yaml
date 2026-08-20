@@ -1,0 +1,20 @@
+# Template for the real config/hermes.config.yaml, created during
+# bootstrap (Milestone 1) on the target instance and git-ignored.
+# Non-secret runtime configuration only — secrets live in the
+# config/*.env files (see SECURITY.md §3), never here.
+
+# Filesystem root for task state, workspaces, logs, and backups
+# (see ARCHITECTURE.md §4).
+data_root: /opt/hermes-data
+
+# Maximum concurrent Claude Code workers (Milestone 6). Must stay <= 3
+# per BUILD_DIRECTIVE.md §2.
+max_parallel_workers: 3
+
+# Bounded repair/retry policy (WORK_PROTOCOL.md §4, BUILD_DIRECTIVE.md §5).
+max_repair_attempts: REPLACE_ME
+max_task_retries: REPLACE_ME
+
+discord:
+  guild_id: REPLACE_ME
+  status_channel_id: REPLACE_ME

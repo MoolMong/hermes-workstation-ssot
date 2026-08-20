@@ -1,0 +1,43 @@
+# Real, credential-bearing config derived from config/*.example*.
+# Only the .example templates are tracked.
+config/*
+!config/*.example
+!config/*.example.yaml
+!config/*.example.yml
+
+# Never track host-local runtime/state data.
+/opt-data/
+hermes-data/
+auth/
+*.session
+*.token
+*.pem
+*.key
+!*.example
+
+# Local secrets files of any common shape.
+.env
+.env.*
+*.env
+!*.env.example
+secrets/
+credentials/
+*credentials*.json
+*.credentials
+
+# Shell history if ever accidentally placed in-repo.
+.bash_history
+.zsh_history
+
+# OS/editor noise.
+.DS_Store
+*.swp
+*~
+
+# Common tooling artifacts.
+__pycache__/
+*.pyc
+.venv/
+venv/
+node_modules/
+*.log
