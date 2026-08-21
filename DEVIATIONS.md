@@ -22,9 +22,28 @@ implementation proceeds.
   `BUILD_DIRECTIVE.md` §9 treating that inspection as optional reference
   material, not a requirement.
 
+## Milestone 1
+
+**No deviations.**
+
+## Milestone 2
+
+**No deviations.**
+
+- `hermes-connect`/`hermes-doctor` are implemented as CLI scripts under
+  `bootstrap/`, per `MILESTONE2_DIRECTIVE.md` §1 ("Milestone 2 should
+  primarily be CLI commands, config generation") — no background
+  connection service, credential-manager daemon, or connection database
+  was added, consistent with the forbidden-scope list in `CLAUDE.md`.
+- `docker/docker-compose.yml`'s command and `env_file` handling were
+  corrected against the real upstream Hermes Agent CLI's actual behavior
+  (see `CHANGELOG.md`'s Milestone 2 "Fixed" entry). This is a bug fix to
+  Milestone 1 output within the existing design, not an architectural
+  deviation or new component.
+
 ## Future milestones
 
-Any deviation discovered during Milestones 1–7 must be recorded here, at
+Any deviation discovered during Milestones 3–7 must be recorded here, at
 the time it is introduced, following the format required by
 `BUILD_DIRECTIVE.md` §15:
 

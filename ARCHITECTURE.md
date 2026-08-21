@@ -170,6 +170,7 @@ bootstrap/
   hermes-installer.sha256              (M1)
   connect.sh                           (M2)
   doctor.sh                            (M2)
+  connect-common.sh                    (M2 — shared connect.sh/doctor.sh helpers)
 
 config/
   discord.env.example                  (M0 — placeholder values only)
@@ -177,6 +178,9 @@ config/
   claude.env.example                   (M0 — placeholder values only)
   github.env.example                   (M0 — placeholder values only)
   hermes.config.example.yaml           (M0 — placeholder values only)
+
+docs/
+  FRESH_EC2_VALIDATION.md              (M2 — fresh EC2 runtime validation plan)
 
 systemd/
   README.md                            (M0 — placeholder)
@@ -200,17 +204,24 @@ evidence/
   milestone-1/TASK.md                  (M1 — execution specification)
   milestone-1/TEST_EVIDENCE.md         (M1 — deterministic evidence)
   milestone-1/VERIFICATION.md          (M1 — verifier record)
+  milestone-2/TASK.md                  (M2 — execution specification)
+  milestone-2/TEST_EVIDENCE.md         (M2 — deterministic evidence)
+  milestone-2/VERIFICATION.md          (M2 — verifier record)
 
 tests/
   check_milestone0.sh                  (M0)
   bootstrap/                           (M1)
-  connect/                             (M2)
+  connection/                          (M2)
   work_path/                           (M3)
   verifier/                            (M4)
   monitor/                             (M5)
   parallel/                            (M6)
   image_readiness/                     (M7)
 ```
+
+(An earlier draft of this tree named the Milestone 2 test directory
+`connect/`; it is `connection/` on disk and in this document, matching the
+Milestone 2 execution specification's deliverable name.)
 
 `tests/` subdirectories for M1–M7 are not created yet; they are listed
 here only to make the target shape explicit. Creating empty placeholder

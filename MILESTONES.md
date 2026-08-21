@@ -3,13 +3,16 @@
 Restated from `BUILD_DIRECTIVE.md` §12, with status. Work proceeds
 milestone by milestone; for each milestone: implement, test, independently
 verify, commit, record evidence, then continue (`BUILD_DIRECTIVE.md` §15).
-Milestone 2 and later are not implemented yet.
+Milestone 3 and later are not implemented yet. Milestone 2 is complete
+within its documented static/local evidence boundary; Fresh EC2 runtime
+validation is still outstanding (see the detailed scope below and
+`evidence/milestone-2/`).
 
 | # | Milestone | Status | Summary |
 |---|---|---|---|
 | 0 | Repository and design | **Complete** | Repository, README, architecture, work protocol, directory layout, threat/secret model, Definition of Done. No runtime framework. |
 | 1 | Clean bootstrap | **Complete** | Reproducible base bootstrap implemented and independently verified within the documented local/static boundary. Fresh EC2/runtime validation remains BLOCKED. |
-| 2 | Connection UX | Planned | `hermes-connect` configures and validates Discord/OpenAI/Claude/GitHub. `hermes-doctor` provides read-only diagnostics. |
+| 2 | Connection UX | **Complete** | `hermes-connect` configures and validates Discord/OpenAI/Claude/GitHub. `hermes-doctor` provides read-only diagnostics. Deterministic and independent semantic gates pass; Fresh EC2 runtime validation not yet performed. |
 | 3 | Basic work path | Planned | Discord → Hermes → Runner → Claude → result. One worker only. |
 | 4 | Verifier | Planned | Worker result → deterministic checks → semantic verification → PASS/FAIL. `COMPLETED` is impossible without PASS. |
 | 5 | Monitor/recovery | Planned | System health + task health using one Monitor implementation where practical. Verify real failure scenarios. |
@@ -119,6 +122,69 @@ milestone noted):
 - AMI sanitization/validation logic (M7)
 - enabling/starting the installed systemd unit (M2+, once credentials
   exist)
+
+## Milestone 2 — detailed scope (complete)
+
+Status: **Complete within the documented static/local evidence boundary.** Deterministic
+checks (`bash tests/connection/run.sh`, `bash tests/bootstrap/run.sh`,
+`bash tests/check_milestone0.sh`) pass; see
+`evidence/milestone-2/TEST_EVIDENCE.md` for the recorded run output and
+`evidence/milestone-2/TASK.md` for the Context/Constraints/Acceptance
+Criteria this milestone worked against. A fresh, independent read-only
+Claude Code verifier returned explicit `VERDICT: PASS`; the chronological
+record is `evidence/milestone-2/VERIFICATION.md`. Fresh EC2,
+Docker/Compose, and systemd runtime validation for the combined Milestone
+1 + Milestone 2 stack were not authorized/available and remain explicitly
+`NOT RUN`/`BLOCKED`; the plan for that validation, including the required
+AWS-approval STOP, is `docs/FRESH_EC2_VALIDATION.md`.
+
+In scope (implemented):
+
+- `bootstrap/connect.sh` (`hermes-connect`) — interactive connection
+  command for Discord, OpenAI/Codex, Claude Code, and GitHub. Detects
+  already-healthy integrations and skips them unless `--reconnect` is
+  given; supports focused reconfiguration (`--discord`, `--openai`,
+  `--claude`, `--github`); validates every integration immediately after
+  configuration; never echoes or logs a secret value.
+- `bootstrap/doctor.sh` (`hermes-doctor`) — read-only diagnostics (Docker,
+  Hermes service/gateway, each integration, required directories/
+  permissions, systemd unit validity, disk space, installed SSOT
+  version/commit, and image-readiness). No `--fix` flag by design; never
+  mutates anything, even when it finds a problem.
+- `bootstrap/connect-common.sh` — shared helpers for both commands,
+  including `credential_paths()`, the single source of truth for every
+  credential-bearing path (cross-checked against `SECURITY.md` §3 by
+  `tests/connection/test_image_readiness.sh`).
+- `docs/FRESH_EC2_VALIDATION.md` — the Fresh EC2 end-to-end validation
+  plan required by `MILESTONE2_DIRECTIVE.md` §11, with an explicit STOP
+  before any AWS resource is created.
+- `tests/connection/` — `run.sh` (syntax checks + full suite runner) plus
+  `lib_fakebin.sh` and seven `test_*.sh` scripts covering Claude, Discord,
+  read-only `hermes-doctor` behavior, GitHub, idempotency/already-
+  configured detection, image-readiness credential detection, and
+  OpenAI/Codex — all against fake/mocked external tools, never a real
+  Discord/OpenAI/Anthropic/GitHub backend.
+- `tests/bootstrap/test_no_m3_scope.sh` — supersedes the Milestone-1-era
+  `test_no_m2_scope.sh`; asserts no Milestone 3+ path
+  (`scripts/runner`/`monitor`/`verifier`, a second systemd unit) exists
+  yet, while confirming Milestone 2's own paths now legitimately do.
+- `evidence/milestone-2/` — `TASK.md`, `TEST_EVIDENCE.md`,
+  `VERIFICATION.md`.
+- `tests/check_milestone0.sh` updated (`CURRENT_MILESTONE=2`,
+  `MILESTONES.md` status table) to keep it a real regression check at
+  Milestone 2.
+
+Explicitly out of scope for Milestone 2 (confirmed absent, deferred to the
+milestone noted):
+
+- Hermes, Runner, Monitor, Verifier implementations (M3–M5)
+- Discord bot task-execution/state-machine logic, `scripts/runner` (M3)
+- a second systemd unit, parallel execution (M5–M6)
+- AMI sanitization/validation logic (M7)
+- enabling/starting the Milestone 1 systemd unit against a fresh EC2
+  instance, and any real Discord/OpenAI/Claude/GitHub account connection
+  (deferred to the approved Fresh EC2 validation in
+  `docs/FRESH_EC2_VALIDATION.md`)
 
 ## Sequencing rule
 

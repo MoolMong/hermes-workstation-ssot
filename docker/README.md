@@ -1,6 +1,8 @@
 # docker/
 
-Milestone 1 (Clean bootstrap) is implemented here.
+Milestone 1 (Clean bootstrap) and the narrow image prerequisites for
+Milestone 2 (Connection UX) are implemented here. Runtime validation on a
+fresh EC2 remains not run.
 
 Current contents:
 
@@ -17,7 +19,7 @@ Current contents:
   pinned commit to `--commit`. Built with `--skip-setup`, so no
   credentials ever enter an image layer.
 - `docker-compose.yml` — exactly one service (`hermes`, container name
-  `hermes`, running `hermes gateway`). `restart: "no"` — supervision is
+  `hermes`, running `hermes gateway run`). `restart: "no"` — supervision is
   systemd's job (`systemd/hermes.service`), not Docker's, so the two
   don't layer into overlapping restart loops for the same failure.
 - `entrypoint.sh` — seeds the bind-mounted `/data` volume from the
@@ -29,5 +31,8 @@ There is exactly one Hermes container/service, per
 `ARCHITECTURE.md` §6 for why "Hermes Gateway" is a Monitor-level check on
 this one container, not a second container.
 
-Do not add Milestone 2+ functional code here before Milestone 2 is in
-progress. See `MILESTONES.md`.
+The image also installs GitHub CLI using its official apt repository and
+pins Claude Code at `@anthropic-ai/claude-code@2.1.237`; persistent
+authentication state remains outside the image under the `/data` bind
+mount. Do not add Milestone 3+ functional code here before that milestone
+is in progress. See `MILESTONES.md` and `SECURITY.md`.

@@ -29,8 +29,11 @@ if [ -f "$COMPOSE" ]; then
   grep -qE '^\s*container_name:\s*hermes\s*$' "$COMPOSE" && r=0 || r=1
   check "$r" "container_name is exactly 'hermes'"
 
-  grep -qE '^\s*command:\s*\["hermes",\s*"gateway"\]\s*$' "$COMPOSE" && r=0 || r=1
-  check "$r" "command runs exactly [\"hermes\", \"gateway\"]"
+  # Milestone 2 fix: `hermes gateway` alone only prints subcommand help; the
+  # gateway must be started with its `run` subcommand
+  # (hermes_cli/subcommands/gateway.py) — regression test for that fix.
+  grep -qE '^\s*command:\s*\["hermes",\s*"gateway",\s*"run"\]\s*$' "$COMPOSE" && r=0 || r=1
+  check "$r" "command runs exactly [\"hermes\", \"gateway\", \"run\"] (not bare \"gateway\", which only prints help)"
 
   grep -qE '^\s*restart:\s*"no"\s*$' "$COMPOSE" && r=0 || r=1
   check "$r" 'restart is "no" (Docker does not supervise; systemd does, avoiding two overlapping restart policies for one failure)'

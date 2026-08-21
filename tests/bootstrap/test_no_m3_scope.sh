@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
-# Milestone 1: no Milestone 2+ functionality may exist yet — hermes-connect
-# / hermes-doctor (M2), scripts/runner|monitor|verifier (M3-M5), a second
-# systemd unit (M5), etc. (MILESTONES.md sequencing rule;
-# BUILD_DIRECTIVE.md §15). This is a standing regression check, not a
-# one-time Milestone 1 check: it must keep passing at Milestone 1 forever,
-# and should be revisited (paths added, not removed) if a later milestone
+# Milestone 2: no Milestone 3+ functionality may exist yet —
+# scripts/runner|monitor|verifier (M3-M5), a second systemd unit (M5), etc.
+# (MILESTONES.md sequencing rule; BUILD_DIRECTIVE.md §15).
+#
+# This supersedes tests/bootstrap/test_no_m2_scope.sh, which asserted that
+# bootstrap/connect.sh and bootstrap/doctor.sh did not exist yet — true
+# during Milestone 1, no longer true now that Milestone 2 legitimately
+# implements them. This is a standing regression check, not a one-time
+# Milestone 2 check: it must keep passing at Milestone 2 forever, and
+# should be revisited (paths added, not removed) if a later milestone
 # legitimately introduces one of these files ahead of this test being
 # updated to expect it.
 set -uo pipefail
@@ -15,8 +19,6 @@ FAIL=0
 check() { if [ "$1" -ne 0 ]; then echo "FAIL: $2"; FAIL=1; else echo "PASS: $2"; fi; }
 
 FORBIDDEN_PATHS=(
-  "bootstrap/connect.sh"
-  "bootstrap/doctor.sh"
   "systemd/hermes-monitor.service"
   "scripts/runner"
   "scripts/monitor"
@@ -24,7 +26,13 @@ FORBIDDEN_PATHS=(
 )
 for p in "${FORBIDDEN_PATHS[@]}"; do
   [ -e "$p" ] && r=1 || r=0
-  check "$r" "M2+ path does not exist yet: $p"
+  check "$r" "M3+ path does not exist yet: $p"
+done
+
+# Milestone 2 does legitimately own these now.
+for p in bootstrap/connect.sh bootstrap/doctor.sh; do
+  [ -e "$p" ] && r=0 || r=1
+  check "$r" "M2 path exists: $p"
 done
 
 # scripts/ must still be placeholder-only (no milestone before M3 owns it).

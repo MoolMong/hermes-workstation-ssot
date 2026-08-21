@@ -36,6 +36,7 @@ REPO_ROOT="${HERMES_REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}
 
 DATA_ROOT="${HERMES_DATA_ROOT:-/opt/hermes-data}"
 SYSTEMD_DIR="${HERMES_SYSTEMD_DIR:-/etc/systemd/system}"
+BIN_DIR="${HERMES_BIN_DIR:-/usr/local/bin}"
 PIN_COMMIT_FILE="$REPO_ROOT/bootstrap/hermes-commit.pin"
 PIN_COMMIT="${HERMES_PIN_COMMIT:-}"
 
@@ -44,6 +45,7 @@ SKIP_PREREQS=false
 SKIP_DOCKER=false
 SKIP_SYSTEMD=false
 SKIP_SYSTEMD_RELOAD=false
+SKIP_LAUNCHERS=false
 
 APT_PACKAGES=(git curl xz-utils ca-certificates)
 
@@ -89,6 +91,8 @@ Options:
   --data-root PATH        Override the data root (default: /opt/hermes-data)
   --systemd-dir PATH       Override the systemd unit install dir
                           (default: /etc/systemd/system)
+  --bin-dir PATH            Override the host launcher install dir
+                          (default: /usr/local/bin)
   --repo-root PATH         Override the repository root used as the source
                           of truth for units/config (default: detected)
   --commit SHA             Override the pinned Hermes commit (default: read
@@ -99,6 +103,8 @@ Options:
   --skip-systemd-reload      Install unit files but skip `systemctl
                           daemon-reload` (used by tests without a real
                           systemd instance)
+  --skip-launchers          Skip installing hermes-connect/hermes-doctor
+                          host launcher wrappers
   -h, --help                Show this help and exit
 
 Every stage is idempotent: re-running this script converges to the same
@@ -114,12 +120,14 @@ while [ $# -gt 0 ]; do
     --dry-run) DRY_RUN=true; shift ;;
     --data-root) DATA_ROOT="$2"; shift 2 ;;
     --systemd-dir) SYSTEMD_DIR="$2"; shift 2 ;;
+    --bin-dir) BIN_DIR="$2"; shift 2 ;;
     --repo-root) REPO_ROOT="$2"; shift 2 ;;
     --commit) PIN_COMMIT="$2"; shift 2 ;;
     --skip-prereqs) SKIP_PREREQS=true; shift ;;
     --skip-docker) SKIP_DOCKER=true; shift ;;
     --skip-systemd) SKIP_SYSTEMD=true; shift ;;
     --skip-systemd-reload) SKIP_SYSTEMD_RELOAD=true; shift ;;
+    --skip-launchers) SKIP_LAUNCHERS=true; shift ;;
     -h|--help) usage; exit 0 ;;
     *) log_err "unknown argument: $1"; usage >&2; exit 2 ;;
   esac
@@ -463,6 +471,77 @@ install_systemd_units() {
 }
 
 # ---------------------------------------------------------------------------
+# Stage: host launcher wrappers (hermes-connect, hermes-doctor)
+#
+# Traceable, idempotent thin wrappers installed to $BIN_DIR that exec the
+# real implementation in this repository (bootstrap/connect.sh /
+# bootstrap/doctor.sh — Milestone 2). Every installed file carries a
+# provenance header, per the same contract as install_systemd_units above.
+# Never handles credentials itself — that is connect.sh's job.
+# ---------------------------------------------------------------------------
+render_launcher() {
+  # $1 = source script relative to repo root, $2 = destination path
+  local src="$1" dest="$2" tmp
+  tmp="$(mktemp)"
+  {
+    echo "#!/usr/bin/env bash"
+    provenance_header "#" "$src"
+    echo "#"
+    printf 'exec "%s/%s" "$@"\n' "$REPO_ROOT" "$src"
+  } > "$tmp"
+
+  # Same idempotency contract as render_unit: strip the volatile
+  # wall-clock provenance timestamp before comparing, so re-running this
+  # script only rewrites the wrapper when the repo commit or script
+  # content actually changed.
+  local strip_ts='s/ on [0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z\.$//'
+  if [ -f "$dest" ] && \
+      diff -q <(sed -E "$strip_ts" "$tmp") <(sed -E "$strip_ts" "$dest") >/dev/null 2>&1; then
+    rm -f "$tmp"
+    return 1 # unchanged
+  fi
+  mv "$tmp" "$dest"
+  chmod 0755 "$dest"
+  return 0 # changed
+}
+
+install_host_launchers() {
+  if [ "$SKIP_LAUNCHERS" = true ]; then
+    log "skipping host launcher stage (--skip-launchers)"
+    return 0
+  fi
+
+  if [ "$DRY_RUN" = true ]; then
+    log_dry "install/update $BIN_DIR/hermes-connect and $BIN_DIR/hermes-doctor (traceable wrappers around bootstrap/connect.sh / bootstrap/doctor.sh)"
+    return 0
+  fi
+
+  if [ ! -f "$REPO_ROOT/bootstrap/connect.sh" ] || [ ! -f "$REPO_ROOT/bootstrap/doctor.sh" ]; then
+    log_err "missing bootstrap/connect.sh or bootstrap/doctor.sh — Milestone 2 sources must be present to install launchers"
+    exit 1
+  fi
+
+  mkdir -p "$BIN_DIR"
+  local changed=() unchanged=()
+  if render_launcher "bootstrap/connect.sh" "$BIN_DIR/hermes-connect"; then
+    changed+=(hermes-connect)
+  else
+    unchanged+=(hermes-connect)
+  fi
+  if render_launcher "bootstrap/doctor.sh" "$BIN_DIR/hermes-doctor"; then
+    changed+=(hermes-doctor)
+  else
+    unchanged+=(hermes-doctor)
+  fi
+
+  if [ "${#changed[@]}" -gt 0 ]; then
+    log_done "installed/updated host launchers in $BIN_DIR: ${changed[*]}"
+  else
+    log_skip "host launchers already up to date in $BIN_DIR: ${unchanged[*]}"
+  fi
+}
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 main() {
@@ -470,6 +549,7 @@ main() {
   log "repo root:    $REPO_ROOT"
   log "data root:    $DATA_ROOT"
   log "systemd dir:  $SYSTEMD_DIR"
+  log "bin dir:      $BIN_DIR"
   log "pinned commit: $PIN_COMMIT"
   [ "$DRY_RUN" = true ] && log "mode: DRY RUN (no changes will be made)"
 
@@ -478,11 +558,12 @@ main() {
   setup_data_dir
   render_config
   install_systemd_units
+  install_host_launchers
 
   echo
   log "bootstrap complete: $STAGE_COUNT stage(s) processed"
   log "Hermes Agent itself is installed inside the Docker image (docker/Dockerfile)."
-  log "Credentials are configured by hermes-connect (Milestone 2, not yet implemented)."
+  log "Credentials are configured by hermes-connect (bootstrap/connect.sh)."
 }
 
 main

@@ -1,7 +1,8 @@
 # Template for the real config/hermes.config.yaml, created during
 # bootstrap (Milestone 1) on the target instance and git-ignored.
-# Non-secret runtime configuration only — secrets live in the
-# config/*.env files (see SECURITY.md §3), never here.
+# Non-secret runtime configuration only. Milestone 2 credentials live only
+# in the bind-mounted `/opt/hermes-data/.env`, `auth.json`, and `auth/`
+# locations inventoried in SECURITY.md §3 — never in this template.
 
 # Filesystem root for task state, workspaces, logs, and backups
 # (see ARCHITECTURE.md §4).

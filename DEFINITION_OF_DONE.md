@@ -152,4 +152,74 @@ The implementation-content items above are satisfied and recorded in
 is recorded in `evidence/milestone-1/VERIFICATION.md`. Milestone 1 is
 **complete** within the explicitly documented evidence boundary. Fresh EC2
 and Docker runtime validation remain BLOCKED and are not claimed as PASS.
-Milestone 2 is next but is not implemented by this change.
+Milestone 2 has since been implemented — see the section below.
+
+## Milestone 2 Definition of Done (this change)
+
+Per `MILESTONE2_DIRECTIVE.md` §10 ("Milestone 2 completion gate"),
+Milestone 2 is **complete** within the documented static/local evidence
+boundary because every §10 implementation, deterministic, semantic, and
+repository-integration gate is satisfied. Fresh EC2/runtime validation is
+a separately approval-gated follow-up and is not claimed as PASS.
+
+- [x] `bootstrap/connect.sh` (`hermes-connect`) implements interactive
+      setup and validation for Discord, OpenAI/Codex, Claude Code, and
+      GitHub, detects already-healthy integrations, supports focused
+      reconfiguration (`--discord`/`--openai`/`--claude`/`--github`,
+      `--reconnect`), and never echoes or logs a secret value.
+- [x] `bootstrap/doctor.sh` (`hermes-doctor`) provides read-only
+      diagnostics (Docker, Hermes service/gateway, each integration,
+      required directories/permissions, systemd unit validity, disk
+      space, installed SSOT version/commit, image-readiness) and never
+      mutates anything — no `--fix` flag.
+- [x] `bootstrap/connect-common.sh` provides shared helpers, including
+      `credential_paths()` as the single source of truth for every
+      credential-bearing path, cross-checked against `SECURITY.md` §3.
+- [x] `docs/FRESH_EC2_VALIDATION.md` records the Fresh EC2 end-to-end
+      validation plan required by `MILESTONE2_DIRECTIVE.md` §11, with an
+      explicit STOP before any AWS resource is created.
+- [x] `tests/connection/run.sh` — a `bash -n` syntax check over every
+      Milestone 2 shell script, plus the full `tests/connection/test_*.sh`
+      suite (Claude, Discord, read-only `hermes-doctor` behavior, GitHub,
+      idempotency/already-configured detection, image-readiness
+      credential detection, OpenAI/Codex) — exits 0, against fake/mocked
+      external tools only; never a real Discord/OpenAI/Anthropic/GitHub
+      backend.
+- [x] `bash tests/bootstrap/run.sh` and `bash tests/check_milestone0.sh`
+      (both updated to be current at Milestone 2 — `CURRENT_MILESTONE=2`,
+      `MILESTONES.md` status table, `tests/bootstrap/test_no_m3_scope.sh`
+      superseding the Milestone-1-era `test_no_m2_scope.sh`) continue to
+      exit 0.
+- [x] The Milestone 1 gateway command defect (`docker-compose.yml`
+      previously running `hermes gateway` rather than the correct
+      `hermes gateway run`) is corrected and re-verified by
+      `tests/bootstrap/test_docker_compose.sh`.
+- [x] No Milestone 3+ functionality exists: no Hermes/Runner/Monitor/
+      Verifier code, no Discord bot task-execution logic, no second
+      systemd unit, no parallel execution, no AMI sanitization logic.
+- [x] No forbidden component (`CLAUDE.md` "Forbidden components") was
+      added; no architectural deviation was required — see
+      `DEVIATIONS.md`.
+- [x] `evidence/milestone-2/TASK.md` records the Context/Constraints/
+      Acceptance Criteria this milestone worked against, and
+      `evidence/milestone-2/TEST_EVIDENCE.md` records the actual
+      deterministic test run this Definition of Done relies on.
+- [x] **A fresh independent read-only Claude Code verifier pass against
+      the final Milestone 2 diff, recorded chronologically in
+      `evidence/milestone-2/VERIFICATION.md`.** Status: **PASS** — Pass 3
+      reran 57/57 M0, 22/22 M1, and 18/18 M2 checks and returned explicit
+      `VERDICT: PASS` after semantic review.
+- [ ] **Fresh EC2 provisioning, Docker/Compose build+run, and systemd
+      enable/start validation for the combined Milestone 1 + Milestone 2
+      stack**, per the plan in `docs/FRESH_EC2_VALIDATION.md`. Status:
+      **NOT RUN / BLOCKED** — not authorized/available; not fabricated as
+      PASS.
+- [x] The Claude authoring/verifying workers performed no commit, push,
+      PR, deploy, credential connection, Docker/systemd runtime action, or
+      AWS action. Repository integration remains with the orchestrator per
+      `CLAUDE.md` "Git discipline".
+
+Milestone 2 is **complete** within its explicitly documented evidence
+boundary. The unchecked Fresh EC2 item is READY/NOT RUN and requires
+explicit AWS approval; it is not silently converted into a runtime PASS.
+Milestone 3 remains planned and was not started by this change.

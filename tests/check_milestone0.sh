@@ -122,7 +122,7 @@ fi
 
 # Files allowed to mention forbidden-tech keywords because they are
 # declaring them as forbidden, not using them.
-ALLOWED_FORBIDDEN_MENTION_FILES="ARCHITECTURE.md|SECURITY.md|CLAUDE.md|MILESTONES.md|DEVIATIONS.md|BUILD_DIRECTIVE.md|README.md|DEFINITION_OF_DONE.md|WORK_PROTOCOL.md|CHANGELOG.md|check_milestone0.sh"
+ALLOWED_FORBIDDEN_MENTION_FILES="ARCHITECTURE.md|SECURITY.md|CLAUDE.md|MILESTONES.md|DEVIATIONS.md|BUILD_DIRECTIVE.md|README.md|DEFINITION_OF_DONE.md|WORK_PROTOCOL.md|CHANGELOG.md|check_milestone0.sh|MILESTONE2_DIRECTIVE.md"
 FORBIDDEN_TECH_PATTERNS=(
   "redis"
   "sqlite"
@@ -212,7 +212,7 @@ echo
 #    status table instead, so a forgotten bump (or a bump with no matching
 #    status-table update) fails loudly rather than silently drifting.
 # ---------------------------------------------------------------------------
-CURRENT_MILESTONE=1
+CURRENT_MILESTONE=2
 
 echo "-- 5. Repository tree consistency --"
 

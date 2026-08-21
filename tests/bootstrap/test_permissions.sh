@@ -11,9 +11,10 @@ trap 'rm -rf "$TMP"' EXIT
 
 DATA="$TMP/hermes-data"
 SYSD="$TMP/systemd"
+BIN="$TMP/bin"
 
 bash "$REPO_ROOT/bootstrap/install.sh" \
-  --data-root "$DATA" --systemd-dir "$SYSD" --repo-root "$REPO_ROOT" \
+  --data-root "$DATA" --systemd-dir "$SYSD" --bin-dir "$BIN" --repo-root "$REPO_ROOT" \
   --skip-prereqs --skip-docker --skip-systemd-reload >/tmp/perm_out.$$ 2>&1
 STATUS=$?
 
@@ -45,6 +46,14 @@ check "$r" ".provenance is 0600 (got ${perm:-missing})"
 perm=$(stat -c %a "$SYSD/hermes.service" 2>/dev/null)
 [ "$perm" = "644" ] && r=0 || r=1
 check "$r" "installed hermes.service is 0644 (got ${perm:-missing})"
+
+# Host launcher wrappers (Milestone 2) are executable, not
+# credential-bearing, so 0755 is correct (not 0600).
+for launcher in hermes-connect hermes-doctor; do
+  perm=$(stat -c %a "$BIN/$launcher" 2>/dev/null)
+  [ "$perm" = "755" ] && r=0 || r=1
+  check "$r" "installed $launcher launcher is 0755 (got ${perm:-missing})"
+done
 
 if [ "$FAIL" -ne 0 ]; then
   cat /tmp/perm_out.$$ >&2

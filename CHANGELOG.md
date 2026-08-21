@@ -6,6 +6,92 @@ milestones per `BUILD_DIRECTIVE.md` §12.
 
 ## [Unreleased]
 
+## [0.1.0-m2] — 2026-08-21 — Milestone 2: Connection UX
+
+### Added
+
+- `bootstrap/connect.sh` (`hermes-connect`) — interactive connection
+  command for Discord, OpenAI/Codex, Claude Code, and GitHub. Detects
+  already-healthy integrations and skips them unless `--reconnect` is
+  given; supports focused reconfiguration (`--discord`, `--openai`,
+  `--claude`, `--github`); validates every integration immediately after
+  configuration; never echoes or logs a secret value.
+- `bootstrap/doctor.sh` (`hermes-doctor`) — read-only diagnostics
+  (Docker, Hermes service/gateway, each integration, required
+  directories/permissions, systemd unit validity, disk space, installed
+  SSOT version/commit, image-readiness). No `--fix` flag by design.
+- `bootstrap/connect-common.sh` — shared helpers, including
+  `credential_paths()`, the single source of truth for every
+  credential-bearing path (cross-checked against `SECURITY.md` §3).
+- `docs/FRESH_EC2_VALIDATION.md` — the Fresh EC2 end-to-end validation
+  plan required by `MILESTONE2_DIRECTIVE.md` §11, with an explicit STOP
+  before any AWS resource is created.
+- `tests/connection/` — `run.sh` (syntax checks + full suite runner)
+  plus `lib_fakebin.sh` and seven `test_*.sh` scripts (Claude, Discord,
+  read-only `hermes-doctor` behavior, GitHub, idempotency/already-
+  configured detection, image-readiness credential detection,
+  OpenAI/Codex) — all against fake/mocked external tools.
+- `tests/bootstrap/test_no_m3_scope.sh` — supersedes the Milestone-1-era
+  `test_no_m2_scope.sh`; asserts no Milestone 3+ path exists yet while
+  confirming Milestone 2's own paths now legitimately do.
+- `evidence/milestone-2/TASK.md`, `evidence/milestone-2/TEST_EVIDENCE.md`.
+- `MILESTONE2_DIRECTIVE.md` — the directive this milestone was scoped
+  against.
+
+### Fixed
+
+- `docker/docker-compose.yml`'s `command` ran `hermes gateway`, which
+  only prints gateway subcommand help and does not start the gateway
+  (`hermes_cli/subcommands/gateway.py`). Corrected to
+  `["hermes", "gateway", "run"]`, the actual start subcommand, and
+  re-verified by `tests/bootstrap/test_docker_compose.sh`. Also dropped
+  the Milestone-1-planned `env_file` injection in that same file:
+  grounding against the real upstream Hermes Agent CLI showed it
+  auto-loads `$HERMES_HOME/.env` and persists `auth.json` itself, both
+  already reachable through the existing bind mount, so `hermes-connect`
+  writes directly into that volume instead of a separate Compose-level
+  secret path.
+- `tests/check_milestone0.sh` updated (`CURRENT_MILESTONE=2`,
+  `MILESTONES.md` status table) to keep it a real regression check at
+  Milestone 2 instead of failing permanently on newly-legitimate
+  Milestone 2 paths.
+
+### Verification evidence
+
+- `bash tests/connection/run.sh`, `bash tests/bootstrap/run.sh`, and
+  `bash tests/check_milestone0.sh` all pass deterministically; see
+  [`evidence/milestone-2/TEST_EVIDENCE.md`](evidence/milestone-2/TEST_EVIDENCE.md)
+  for the recorded run output and exact check counts.
+- A genuinely fresh, independent read-only Claude Code verifier reran M0
+  57/57, M1 22/22, M2 18/18, Bash syntax, and `git diff --check`, reviewed
+  every Milestone 2 directive requirement and the three repaired path-doc
+  defects, and returned explicit `VERDICT: PASS`. The chronological record
+  is [`evidence/milestone-2/VERIFICATION.md`](evidence/milestone-2/VERIFICATION.md).
+- Fresh EC2, Docker/Compose, and systemd runtime validation for the
+  combined Milestone 1 + Milestone 2 stack, and any real Discord/OpenAI/
+  Claude/GitHub account connection, were not authorized/available and
+  remain explicitly `NOT RUN`/`BLOCKED`; the plan for that validation,
+  including the required AWS-approval STOP, is
+  [`docs/FRESH_EC2_VALIDATION.md`](docs/FRESH_EC2_VALIDATION.md).
+
+### Deviations
+
+- None. No forbidden component (`CLAUDE.md` "Forbidden components") was
+  added and no architectural deviation was required; see
+  `DEVIATIONS.md`.
+
+### Process note
+
+The Claude authoring worker did not commit or push this change, connect
+any real account, start or enable any service, or create any AWS
+resource. Per the current operating instructions, Git operations remain
+with the operator/orchestrator.
+
+### Not included (by design)
+
+Milestones 3–7 (basic work path, verifier, monitor/recovery, parallel
+execution, image readiness) — see `MILESTONES.md`.
+
 ## [0.1.0-m1] — 2026-08-20 — Milestone 1: Clean bootstrap
 
 ### Added

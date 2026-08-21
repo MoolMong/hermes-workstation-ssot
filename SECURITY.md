@@ -77,37 +77,50 @@ readiness check must reference. It will grow only if a milestone
 concretely introduces a new credential-bearing path, and any such addition
 must be reflected here in the same change.
 
-| Location (planned) | Holds | Introduced by | Must be absent from base image |
+As implemented in Milestone 2, every path below is inside the single
+bind-mounted data volume, host `/opt/hermes-data` → container `/data`
+(`HERMES_HOME=/data`, `docker/docker-compose.yml`). `bootstrap/
+connect-common.sh`'s `credential_paths()` function is the single source of
+truth in code for this list — `hermes-doctor`'s image-readiness check and
+`hermes-connect`'s "already configured" detection both read it from there
+so this table and the implementation cannot silently drift apart
+(`tests/connection/test_image_readiness.sh` checks the two stay
+consistent).
+
+| Location (actual) | Holds | Introduced by | Must be absent from base image |
 |---|---|---|---|
-| `/opt/hermes-data/auth/discord/` | Discord bot token | Milestone 2 (`hermes-connect`) | Yes |
-| `/opt/hermes-data/auth/openai/` | OpenAI/Codex OAuth/session credentials | Milestone 2 | Yes |
-| `/opt/hermes-data/auth/claude/` | Claude Code credentials/session | Milestone 2 | Yes |
-| `/opt/hermes-data/auth/github/` | GitHub auth material used by the GitHub CLI credential helper (or a pointer to it — see next row) | Milestone 2 | Yes |
-| `~/.config/gh/` (operator's home dir on the instance) | GitHub CLI auth (`gh auth login` token), used via the HTTPS credential helper pattern | Milestone 2 | Yes |
-| Claude Code's own credential/session directory (e.g. `~/.claude/` or `~/.config/claude/` on the instance — exact path fixed when the Claude Code persistent wrapper pattern is implemented, Milestone 2) | Claude Code auth/session state | Milestone 2 | Yes |
+| `/opt/hermes-data/.env` | Discord bot token (`DISCORD_BOT_TOKEN`) and the Discord allow-list (`DISCORD_ALLOWED_USERS`/`_ROLES`/`_CHANNELS`, `DISCORD_ALLOW_ALL_USERS`) — the exact env vars the upstream Hermes Agent Discord platform plugin reads, auto-loaded by the `hermes` CLI at startup | Milestone 2 (`hermes-connect --discord`) | Yes |
+| `/opt/hermes-data/auth.json` | The Hermes Agent CLI's own pooled-credential store (`hermes auth add/status`), including OpenAI/Codex OAuth/session state | Milestone 2 (`hermes-connect --openai`, via `hermes auth add openai-codex --no-browser`) | Yes |
+| `/opt/hermes-data/config.yaml` | Non-secret Hermes Agent configuration; must never itself hold raw secret values — secrets belong in `.env`/`auth.json`/`auth/`, not here | Milestone 1 (rendered), read by Milestone 2 tooling | Yes (rendered config only; must not contain real values) |
+| `/opt/hermes-data/auth/claude/` | Claude Code CLI credentials/session state — container `CLAUDE_CONFIG_DIR` and `HOME` are both set to `/data/auth/claude` (`docker/Dockerfile`), so this is Claude Code's real, official persistent credential directory, not a guess | Milestone 2 (`hermes-connect --claude`, via `claude setup-token`) | Yes |
+| `/opt/hermes-data/auth/github/gh/` | GitHub CLI auth (`gh auth login --hostname github.com --git-protocol https --web`) — container `GH_CONFIG_DIR` | Milestone 2 (`hermes-connect --github`) | Yes |
+| `/opt/hermes-data/auth/github/.gitconfig` | Git HTTPS credential-helper config written by `gh auth setup-git` — container `GIT_CONFIG_GLOBAL` | Milestone 2 (`hermes-connect --github`) | Yes |
 | `/opt/hermes-data/tasks/TASK-<id>/worker.log` | May incidentally contain private task content (not credentials by design, but must be excluded from any image/export regardless) | Milestone 3 | Yes |
 | `/opt/hermes-data/workspaces/` | Personal repositories cloned/worked on by workers | Milestone 3 | Yes |
 | `/opt/hermes-data/backup/` | Backups of the above — inherits the same sensitivity | Milestone 1 (concept), populated from Milestone 3 | Yes |
 | Shell history on the instance (e.g. `~/.bash_history`) | May capture secrets if a user pastes a token on the command line | N/A (host-level risk) | Yes — must be checked/cleared before imaging |
-| `config/*.env` (instance-local, derived from `config/*.example` in this repo) | Rendered runtime configuration, potentially including non-secret settings; must never itself hold raw secret values — secrets belong in `auth/`, not `config/` | Milestone 1–2 | Yes |
-| Private SSH keys used for Git operations on the instance | Git push/pull authentication | Operator-provided or Milestone 1 setup | Yes |
+| Private SSH keys used for Git operations on the instance | Not used by this design — GitHub access is HTTPS + the `gh` credential helper only (`MILESTONE2_DIRECTIVE.md` §6: "Do not add SSH key management unless it is actually required"); kept as a standing exclusion in case an operator adds one manually | N/A | Yes, if present |
 
-None of the paths above exist yet — no code that creates them has been
-written. They are documented now, in Milestone 0, so that:
+`hermes-connect` never writes to `config/*.env` in this repository/instance
+checkout — those files are git-ignored, `*.example`-documented references
+only (see each `config/*.env.example` file); the real, git-ignored
+persistence lives entirely under `/opt/hermes-data/`, per the table above.
 
-- `hermes-connect` (Milestone 2) has a fixed target list to populate,
-- `hermes-doctor` (Milestone 2) has a fixed target list to check,
-- the Milestone 7 image-readiness validator has a fixed target list to
-  scan and can reject an image that fails, rather than relying on ad hoc
-  file deletion.
+`hermes-doctor`'s image-readiness check (`bootstrap/doctor.sh`, backed by
+`credential_paths()` in `bootstrap/connect-common.sh`) walks exactly the
+paths in this table (all four rows marked Milestone 2) and refuses to
+report the instance image-safe if any is populated.
 
 ## 4. `config/*.example` files in this repository
 
 The `config/` directory in this repository (see `ARCHITECTURE.md` §6)
-contains only `*.example` files with placeholder values such as
-`REPLACE_ME`. They are templates for the real, git-ignored files that
-`hermes-connect` will write on the instance (Milestone 2). No `*.example`
-file may contain a real token, key, or credential-shaped string —
+contains only historical/design reference `*.example` files with
+placeholder values such as `REPLACE_ME`. Milestone 2 does **not** copy or
+populate integration-specific `config/*.env` files: `hermes-connect`
+writes only the official persistent locations inventoried in §3 under the
+bind-mounted `/opt/hermes-data`. The bootstrap renders the non-secret
+`config.yaml` separately. No `*.example` file may contain a real token,
+key, or credential-shaped string —
 `tests/check_milestone0.sh` checks this deterministically (pattern-based,
 not exhaustive; human review still applies).
 

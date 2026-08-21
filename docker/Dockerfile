@@ -1,5 +1,6 @@
 # ============================================================================
-# Hermes Workstation SSOT — Hermes Agent image (Milestone 1)
+# Hermes Workstation SSOT — Hermes Agent image (Milestone 1 base + Milestone
+# 2 connection-integration tooling: GitHub CLI, pinned Claude Code CLI)
 # ============================================================================
 # Minimal, pinned, traceable image. This is the ONLY place in this
 # repository that fetches and executes the official Hermes Agent installer.
@@ -74,11 +75,57 @@ RUN set -eu; \
     rm -f /tmp/hermes-install.sh; \
     rm -rf /tmp/pins
 
+# ----------------------------------------------------------------------------
+# GitHub CLI — installed via the official apt repository (documented method:
+# https://github.com/cli/cli/blob/trunk/docs/install_linux.md#debian-ubuntu-linux-raspberry-pi-os-apt),
+# not a third-party script. Used by hermes-connect (Milestone 2) for HTTPS
+# `gh auth login` / `gh auth setup-git` — no SSH key management.
+# ----------------------------------------------------------------------------
+RUN apt-get update -qq \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends gnupg \
+    && install -d -m 0755 /etc/apt/keyrings \
+    && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg -o /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+    && chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+       > /etc/apt/sources.list.d/github-cli.list \
+    && apt-get update -qq \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq gh \
+    && rm -rf /var/lib/apt/lists/* \
+    && gh --version
+
+# ----------------------------------------------------------------------------
+# Claude Code CLI — exact version pin (MILESTONE2_DIRECTIVE.md), installed
+# via npm. The Hermes Agent installer above already provisions Node.js for
+# its own use (NODE_VERSION pinned in the upstream installer); this reuses
+# that npm rather than provisioning a second, possibly conflicting Node
+# toolchain. Fails the build (does not silently skip the pin) if npm is not
+# on PATH after the Hermes Agent install.
+# ----------------------------------------------------------------------------
+RUN set -eu; \
+    if ! command -v npm >/dev/null 2>&1; then \
+        echo "npm not found after Hermes Agent install — cannot install pinned @anthropic-ai/claude-code" >&2; \
+        exit 1; \
+    fi; \
+    npm install -g @anthropic-ai/claude-code@2.1.237; \
+    claude --version
+
 # Runtime data root — bind-mounted from host /opt/hermes-data via
 # docker-compose.yml. Never populated with real content at build time;
 # entrypoint.sh seeds it from /opt/hermes-seed on first run only.
 ENV HERMES_HOME=/data
 RUN mkdir -p /data && chmod 0700 /data
+
+# Persistent auth locations for Claude Code and GitHub CLI, bind-mounted via
+# the same /data volume as HERMES_HOME (host: /opt/hermes-data/auth/claude,
+# /opt/hermes-data/auth/github — see SECURITY.md §3). Set only now, after
+# every build-time package install above, so those installs still use the
+# image's normal build-time HOME rather than this runtime-only path.
+# docker/entrypoint.sh creates these directories (0700) on every container
+# start, since /data is an empty bind mount until then.
+ENV HOME=/data/auth/claude
+ENV CLAUDE_CONFIG_DIR=/data/auth/claude
+ENV GH_CONFIG_DIR=/data/auth/github/gh
+ENV GIT_CONFIG_GLOBAL=/data/auth/github/.gitconfig
 
 COPY docker/entrypoint.sh /usr/local/bin/hermes-entrypoint.sh
 RUN chmod +x /usr/local/bin/hermes-entrypoint.sh

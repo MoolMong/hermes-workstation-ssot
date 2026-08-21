@@ -1,4 +1,5 @@
-# Hermes Workstation SSOT — compose definition (Milestone 1)
+# Hermes Workstation SSOT — compose definition (Milestone 1 base, Milestone
+# 2 command/persistence fix)
 #
 # Exactly ONE Hermes container/service (BUILD_DIRECTIVE.md §1: Hermes is
 # the orchestrator; there is no second orchestrator runtime). Hermes
@@ -18,10 +19,20 @@
 # effectively-infinite restart loops for one fault; this repository picks
 # systemd as the one supervisor instead of layering both.
 #
-# No secrets live in this file. config/*.env are instance-local,
-# git-ignored, and optional at this milestone (created by hermes-connect in
-# Milestone 2) — `required: false` lets this file validate and run before
-# they exist.
+# No secrets live in this file, and (as of Milestone 2) no config/*.env are
+# injected via `env_file` here — Milestone 1 originally planned that, but
+# Milestone 2 grounded the design against the real upstream Hermes Agent
+# CLI, which auto-loads its own $HERMES_HOME/.env at startup
+# (hermes_cli/env_loader.py) and persists OAuth/session state to
+# $HERMES_HOME/auth.json — both already reachable through the /data bind
+# mount below, so no separate Compose-level secret injection is needed.
+# `hermes-connect` (bootstrap/connect.sh) writes directly into that
+# bind-mounted volume. See SECURITY.md §3 and evidence/milestone-2/TASK.md.
+#
+# `command` runs the gateway's `run` subcommand explicitly. `hermes
+# gateway` alone only prints gateway subcommand help — it does not start
+# the gateway (hermes_cli/subcommands/gateway.py:
+# `hermes gateway run|install|start|stop|restart|status|setup`).
 
 services:
   hermes:
@@ -30,16 +41,7 @@ services:
       dockerfile: docker/Dockerfile
     image: hermes-workstation/hermes-agent:m1
     container_name: hermes
-    command: ["hermes", "gateway"]
+    command: ["hermes", "gateway", "run"]
     restart: "no"
     volumes:
       - ${HERMES_DATA_ROOT:-/opt/hermes-data}:/data
-    env_file:
-      - path: ../config/discord.env
-        required: false
-      - path: ../config/openai.env
-        required: false
-      - path: ../config/claude.env
-        required: false
-      - path: ../config/github.env
-        required: false

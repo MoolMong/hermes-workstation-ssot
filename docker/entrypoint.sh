@@ -13,4 +13,12 @@ if [ -d /opt/hermes-seed ] && [ ! -e /data/.seeded ]; then
   touch /data/.seeded
 fi
 
+# Persistent auth directories (Milestone 2 — see docker/Dockerfile's
+# CLAUDE_CONFIG_DIR/GH_CONFIG_DIR/GIT_CONFIG_GLOBAL env vars and
+# SECURITY.md §3). /data is an empty bind mount until this point, so these
+# are (re)ensured on every start, not just first run — idempotent, and
+# never overwrites any file already inside them.
+mkdir -p /data/auth/claude /data/auth/github/gh
+chmod 0700 /data/auth /data/auth/claude /data/auth/github
+
 exec "$@"

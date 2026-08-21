@@ -16,6 +16,7 @@ conflict with the directive, the directive wins.
 
 **Milestone 0 (Repository and design): complete.**
 **Milestone 1 (Clean bootstrap): complete and independently verified.**
+**Milestone 2 (Connection UX): complete within the documented static/local boundary and independently verified.**
 
 `tests/check_milestone0.sh` passes deterministically (see
 [`CHANGELOG.md`](CHANGELOG.md) for the current check count and result).
@@ -43,10 +44,27 @@ chronological review record is
 Fresh EC2 and Docker runtime validation remain explicitly BLOCKED, not
 fabricated as PASS; see those evidence files for the exact boundary.
 
-Milestones 2–7 (connection UX, basic work path, verifier, monitor/recovery,
-parallel execution, image readiness) remain **planned, not implemented**.
-See [`MILESTONES.md`](MILESTONES.md) for the full plan and current status
-of each milestone.
+`bootstrap/connect.sh` (`hermes-connect`) and `bootstrap/doctor.sh`
+(`hermes-doctor`) implement Milestone 2, with deterministic evidence in
+[`evidence/milestone-2/TEST_EVIDENCE.md`](evidence/milestone-2/TEST_EVIDENCE.md).
+Fresh independent read-only verification returned **PASS** and is recorded
+chronologically in
+[`evidence/milestone-2/VERIFICATION.md`](evidence/milestone-2/VERIFICATION.md).
+Fresh EC2, Docker/Compose, and systemd runtime validation for the combined
+Milestone 1 + Milestone 2 stack, and any connection of real Discord/
+OpenAI/Claude/GitHub accounts, were not authorized/available and remain
+explicitly `NOT RUN`/`BLOCKED`; the plan for that validation, including
+the required AWS-approval STOP, is
+[`docs/FRESH_EC2_VALIDATION.md`](docs/FRESH_EC2_VALIDATION.md). The
+directive that scoped this milestone is
+[`MILESTONE2_DIRECTIVE.md`](MILESTONE2_DIRECTIVE.md).
+
+Milestones 3–7 (basic work path, verifier, monitor/recovery, parallel
+execution, image readiness) remain **planned, not implemented**. No
+architectural deviation or forbidden component (`CLAUDE.md` "Forbidden
+components") was added while implementing Milestone 2; see
+[`DEVIATIONS.md`](DEVIATIONS.md). See [`MILESTONES.md`](MILESTONES.md)
+for the full plan and current status of each milestone.
 
 `scripts/` (Runner/Monitor/Verifier, Milestones 3–5) still contains only a
 `README.md` placeholder describing what will live there and in which
@@ -62,17 +80,22 @@ been designed, tested, or verified yet.
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | Non-negotiable components, data flow, proposed repository tree. |
 | [`WORK_PROTOCOL.md`](WORK_PROTOCOL.md) | Context → Decompose → Parallelize → Verify → Integrate policy for every actionable request. |
 | [`SECURITY.md`](SECURITY.md) | Threat model, secret model, every credential-bearing location, image-sanitization requirements. |
-| [`MILESTONES.md`](MILESTONES.md) | Milestone-by-milestone plan and status (M0 complete, M1 implementation complete). |
-| [`DEFINITION_OF_DONE.md`](DEFINITION_OF_DONE.md) | Global Definition of Done plus the Milestone 0 and Milestone 1 Definitions of Done. |
+| [`MILESTONES.md`](MILESTONES.md) | Milestone-by-milestone plan and status (M0–M2 complete within their documented evidence boundaries). |
+| [`DEFINITION_OF_DONE.md`](DEFINITION_OF_DONE.md) | Global Definition of Done plus the Milestone 0, Milestone 1, and Milestone 2 Definitions of Done. |
 | [`DEVIATIONS.md`](DEVIATIONS.md) | Explicit deviations from `BUILD_DIRECTIVE.md` (expected: none). |
 | [`CHANGELOG.md`](CHANGELOG.md) | Notable changes, keyed by milestone. |
 | [`CLAUDE.md`](CLAUDE.md) | Project-level instructions for any Claude Code agent working in this repository. |
+| [`MILESTONE2_DIRECTIVE.md`](MILESTONE2_DIRECTIVE.md) | The Milestone 2 + Fresh EC2 validation directive this milestone was scoped against. |
+| [`docs/FRESH_EC2_VALIDATION.md`](docs/FRESH_EC2_VALIDATION.md) | The Fresh EC2 end-to-end validation plan for Milestone 1 + Milestone 2, with an explicit STOP before any AWS resource is created. |
 | [`evidence/milestone-0/VERIFICATION.md`](evidence/milestone-0/VERIFICATION.md) | Durable, chronological record of independent-verifier passes for Milestone 0. Authoritative source for verification status claims made elsewhere. |
 | [`evidence/milestone-1/TASK.md`](evidence/milestone-1/TASK.md) | Milestone 1 Context/Constraints/Acceptance Criteria (`WORK_PROTOCOL.md` §1). |
 | [`evidence/milestone-1/TEST_EVIDENCE.md`](evidence/milestone-1/TEST_EVIDENCE.md) | Milestone 1 deterministic test run evidence. Explicitly not an independent-verifier `PASS` claim — see that document for what it does and does not assert. |
 | [`evidence/milestone-1/VERIFICATION.md`](evidence/milestone-1/VERIFICATION.md) | Durable chronological record of independent semantic verification for Milestone 1. |
+| [`evidence/milestone-2/TASK.md`](evidence/milestone-2/TASK.md) | Milestone 2 Context/Constraints/Acceptance Criteria (`WORK_PROTOCOL.md` §1). |
+| [`evidence/milestone-2/TEST_EVIDENCE.md`](evidence/milestone-2/TEST_EVIDENCE.md) | Milestone 2 deterministic test run evidence. Explicitly not an independent-verifier `PASS` claim — see that document for what it does and does not assert. |
+| [`evidence/milestone-2/VERIFICATION.md`](evidence/milestone-2/VERIFICATION.md) | Durable chronological record of independent semantic verification for Milestone 2; latest pass: `PASS`. |
 
-## Repository layout (current, Milestone 0 + Milestone 1)
+## Repository layout (current, Milestone 0 + Milestone 1 + Milestone 2)
 
 ```text
 .
@@ -83,6 +106,7 @@ been designed, tested, or verified yet.
 ├── DEFINITION_OF_DONE.md
 ├── DEVIATIONS.md
 ├── MILESTONES.md
+├── MILESTONE2_DIRECTIVE.md
 ├── README.md
 ├── SECURITY.md
 ├── WORK_PROTOCOL.md
@@ -91,8 +115,10 @@ been designed, tested, or verified yet.
 │   ├── README.md
 │   ├── install.sh              # idempotent host bootstrap (Milestone 1)
 │   ├── hermes-commit.pin       # pinned Hermes Agent commit (Milestone 1)
-│   └── hermes-installer.sha256 # pinned installer checksum (Milestone 1)
-│   # connect.sh / doctor.sh land here in Milestone 2
+│   ├── hermes-installer.sha256 # pinned installer checksum (Milestone 1)
+│   ├── connect.sh              # hermes-connect (Milestone 2)
+│   ├── doctor.sh                # hermes-doctor (Milestone 2)
+│   └── connect-common.sh        # shared helpers (Milestone 2)
 ├── config/
 │   ├── discord.env.example
 │   ├── openai.env.example
@@ -109,17 +135,27 @@ been designed, tested, or verified yet.
 │   └── hermes.service          # the only systemd unit (Milestone 1)
 ├── scripts/
 │   └── README.md          # runner / monitor / verifier land here (Milestone 3–5)
+├── docs/
+│   └── FRESH_EC2_VALIDATION.md # Fresh EC2 validation plan (Milestone 2)
 ├── evidence/
 │   ├── milestone-0/
 │   │   └── VERIFICATION.md     # durable, chronological verifier record
-│   └── milestone-1/
+│   ├── milestone-1/
+│   │   ├── TASK.md             # Context/Constraints/Acceptance Criteria
+│   │   ├── TEST_EVIDENCE.md    # deterministic test run evidence
+│   │   └── VERIFICATION.md     # independent semantic verifier record
+│   └── milestone-2/
 │       ├── TASK.md             # Context/Constraints/Acceptance Criteria
 │       ├── TEST_EVIDENCE.md    # deterministic test run evidence
-│       └── VERIFICATION.md     # independent semantic verifier record
+│       └── VERIFICATION.md     # independent semantic verifier record (PASS)
 └── tests/
     ├── check_milestone0.sh
-    └── bootstrap/
-        ├── run.sh               # syntax checks + full suite runner
+    ├── bootstrap/
+    │   ├── run.sh               # syntax checks + full suite runner
+    │   └── test_*.sh
+    └── connection/
+        ├── run.sh               # syntax checks + full suite runner (Milestone 2)
+        ├── lib_fakebin.sh
         └── test_*.sh
 ```
 
@@ -132,6 +168,7 @@ files that do not exist yet) and the reasoning behind it.
 bash tests/check_milestone0.sh   # documents, secret model, forbidden-scope,
                                   # repository-tree consistency (milestone-aware)
 bash tests/bootstrap/run.sh      # Milestone 1: syntax checks + full test suite
+bash tests/connection/run.sh     # Milestone 2: syntax checks + full test suite
 ```
 
 `tests/check_milestone0.sh` is a deterministic, dependency-free check
@@ -161,10 +198,19 @@ package-stage fail-closed behavior, and absence of Milestone 2+ files).
 Never invokes Docker, apt-get install, or systemctl enable/start/
 daemon-reload against the real host.
 
-## Non-goals for v0.1 (Milestone 0 and Milestone 1)
+`tests/connection/run.sh` is Milestone 2's deterministic check: a
+`bash -n` syntax check over every Milestone 2 shell script, plus the full
+`tests/connection/test_*.sh` suite (Claude, Discord, GitHub, and
+OpenAI/Codex setup/validation, read-only `hermes-doctor` behavior,
+idempotency/already-configured detection, and image-readiness credential
+detection) — all run against fake/mocked external tools. Never invokes a
+real Discord, OpenAI, Anthropic, or GitHub backend, and never creates AWS
+resources.
+
+## Non-goals for v0.1 (Milestone 0 through Milestone 2)
 
 No runtime framework, no orchestrator process, no task state machine, no
-Discord bot, no Claude Code runner, no monitor, no verifier, no
-credential handling. Those are Milestones 2–7. Milestones 0–1 are
-documentation, repository scaffolding, and reproducible host/image
-bootstrap only, per `BUILD_DIRECTIVE.md` §12.
+Discord bot, no Claude Code runner, no monitor, no verifier. Those are
+Milestones 3–7. Milestones 0–2 are documentation, repository scaffolding,
+reproducible host/image bootstrap, and interactive connection UX only,
+per `BUILD_DIRECTIVE.md` §12.

@@ -11,7 +11,8 @@ trap 'rm -rf "$TMP"' EXIT
 
 DATA="$TMP/hermes-data"
 SYSD="$TMP/systemd"
-ARGS=(--data-root "$DATA" --systemd-dir "$SYSD" --repo-root "$REPO_ROOT" \
+BIN="$TMP/bin"
+ARGS=(--data-root "$DATA" --systemd-dir "$SYSD" --bin-dir "$BIN" --repo-root "$REPO_ROOT" \
       --skip-prereqs --skip-docker --skip-systemd-reload)
 
 FAIL=0
@@ -22,6 +23,7 @@ check "$S1" "first run exits 0"
 
 CONFIG_MTIME_1=$(stat -c %Y "$DATA/config/hermes.config.yaml" 2>/dev/null)
 UNIT_MTIME_1=$(stat -c %Y "$SYSD/hermes.service" 2>/dev/null)
+LAUNCHER_MTIME_1=$(stat -c %Y "$BIN/hermes-connect" 2>/dev/null)
 PROVENANCE_CREATED_1=$(grep '^created_at=' "$DATA/.provenance" 2>/dev/null)
 
 sleep 1
@@ -37,6 +39,9 @@ check "$r" "second run reports rendered config already present (not re-rendered)
 echo "$OUT2" | grep -q 'ALREADY: systemd units already up to date' && r=0 || r=1
 check "$r" "second run reports systemd units unchanged (not re-copied)"
 
+echo "$OUT2" | grep -q 'ALREADY: host launchers already up to date' && r=0 || r=1
+check "$r" "second run reports host launchers unchanged (not re-copied)"
+
 CONFIG_MTIME_2=$(stat -c %Y "$DATA/config/hermes.config.yaml" 2>/dev/null)
 [ "$CONFIG_MTIME_1" = "$CONFIG_MTIME_2" ] && r=0 || r=1
 check "$r" "rendered config file was not rewritten on second run (mtime unchanged)"
@@ -44,6 +49,10 @@ check "$r" "rendered config file was not rewritten on second run (mtime unchange
 UNIT_MTIME_2=$(stat -c %Y "$SYSD/hermes.service" 2>/dev/null)
 [ "$UNIT_MTIME_1" = "$UNIT_MTIME_2" ] && r=0 || r=1
 check "$r" "systemd unit file was not rewritten on second run (mtime unchanged)"
+
+LAUNCHER_MTIME_2=$(stat -c %Y "$BIN/hermes-connect" 2>/dev/null)
+[ "$LAUNCHER_MTIME_1" = "$LAUNCHER_MTIME_2" ] && r=0 || r=1
+check "$r" "hermes-connect launcher was not rewritten on second run (mtime unchanged)"
 
 PROVENANCE_CREATED_2=$(grep '^created_at=' "$DATA/.provenance" 2>/dev/null)
 [ "$PROVENANCE_CREATED_1" = "$PROVENANCE_CREATED_2" ] && r=0 || r=1

@@ -1,7 +1,8 @@
 # bootstrap/
 
-Milestone 1 (Clean bootstrap) is implemented here. Milestone 2
-(`hermes-connect` / `hermes-doctor`) is not.
+Milestone 1 (Clean bootstrap) and Milestone 2 (Connection UX) are
+implemented here. Milestone 2 is awaiting independent verification; no
+Fresh EC2 or real-account runtime PASS is claimed.
 
 Current contents:
 
@@ -27,17 +28,18 @@ Current contents:
   `docker/Dockerfile` downloads the installer from the URL above at build
   time and refuses to execute it unless the computed digest matches this
   file exactly (verified before execution, never after).
+- `connect.sh` — implements the installed `hermes-connect` launcher:
+  configures and validates Discord, OpenAI/Codex, Claude Code, and GitHub.
+- `doctor.sh` — implements the installed, read-only `hermes-doctor`
+  launcher and image-readiness diagnostics.
+- `connect-common.sh` — shared connection/diagnostic helpers; it is a
+  sourced library, not a service or second runtime.
 
 `install.sh` does **not** install the Hermes Agent itself — that happens
 inside `docker/Dockerfile`, so the container image remains the single
-reproducible, traceable build artifact. `install.sh` never handles
-credentials; see `SECURITY.md` §3.
+reproducible, traceable build artifact. `install.sh` never handles credentials; it only installs traceable launcher
+wrappers for the Milestone 2 scripts. Credentials are created later by the
+operator through `hermes-connect`; see `SECURITY.md` §3.
 
-Planned, not yet implemented (Milestone 2):
-
-- `connect.sh` — implements `hermes-connect`: interactively connects and
-  validates Discord, OpenAI, Claude Code, and GitHub.
-- `doctor.sh` — implements `hermes-doctor`: read-only health diagnostics.
-
-Do not add Milestone 2+ functional code here before Milestone 2 is in
+Do not add Milestone 3+ functional code here before that milestone is in
 progress. See `MILESTONES.md`.
