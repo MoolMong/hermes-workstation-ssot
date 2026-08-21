@@ -321,3 +321,52 @@ Result: **PASS** (exit 0, no output).
 - Real account connection, service start, Discord round-trip, and
   restart/reboot were **NOT RUN** in attempt 2, same as attempt 1 — not
   claimed PASS, FAIL, or anything else.
+
+---
+
+## Attempt 3 (2026-08-21) — `tar` present; pinned Node.js runtime dependency missing
+
+A third authorized fresh Ubuntu 24.04 EC2 run used exact repository HEAD
+`05f39f07a8e60a42dc856ebabea46ee37368357c`. SSH/source provenance,
+bootstrap, second-run hash stability, and `docker compose config` passed.
+The image build reached the pinned Hermes installer with `tar` and
+`xz-utils` installed, but again exited 127 after Node.js extraction.
+
+A direct reproduction in the same pinned Ubuntu 24.04 base image installed
+the exact prerequisite package list, extracted the same Node.js 26.7.0
+archive, and executed its `node` binary. The observed result was:
+
+```text
+NODE_EXIT=127
+libatomic.so.1: cannot open shared object file
+libatomic.so.1 => not found
+```
+
+This proves the remaining missing Ubuntu runtime package is `libatomic1`,
+which provides `libatomic.so.1`; it does not invalidate the separately
+required `tar` and `xz-utils` prerequisites. The attempt-3 EC2 instance,
+security group, encrypted DeleteOnTermination root EBS volume, temporary
+SSH key, and diagnostic bundle were all deleted and their absence was
+verified.
+
+### Defect-only local repair
+
+The pre-installer package list now adds only `libatomic1`; existing `tar`,
+`xz-utils`, HTTP bounded retry, immutable commit pin, installer SHA-256
+verification, and download → verify → execute ordering are unchanged.
+`tests/bootstrap/test_installer_extract_deps.sh` was first updated and
+observed failing specifically because `libatomic1` was absent, then passed
+after the Dockerfile repair.
+
+Local deterministic results:
+
+- focused extraction/runtime dependency test: **PASS** (9 assertions)
+- Milestone 1/bootstrap: **26/26 PASS**
+- Milestone 2/connection: **18/18 PASS**
+- Milestone 0: **57/57 PASS**
+- immutable pin/checksum test: **PASS**
+- bounded retry test: **PASS**
+- `git diff --check`: **PASS**
+
+No new EC2 or AWS resource was created for this repair. Docker image build
+success on a fresh host is still **NOT VERIFIED** and is not claimed here.

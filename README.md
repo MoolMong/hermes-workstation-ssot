@@ -71,14 +71,16 @@ xf`/`tar xzf` archive extraction had no `tar` binary available, since
 RUN**; instance/security group/encrypted `DeleteOnTermination` EBS/
 temporary SSH key were cleaned up. The smallest repair — adding `tar` to
 that prerequisite package list, plus
-`tests/bootstrap/test_installer_extract_deps.sh` — is applied; see
-`evidence/milestone-2-fresh-ec2/TEST_EVIDENCE.md`. Deterministic checks
-remain green (`tests/check_milestone0.sh` 57/57,
-`tests/bootstrap/run.sh` 26/26, `tests/connection/run.sh` 18/18), but a
-new independent verifier pass over this repair is still pending, so
-Fresh EC2/Docker/Compose/systemd runtime validation for the combined
-Milestone 1 + Milestone 2 stack remains explicitly **incomplete** — a
-fresh, real re-run is still required. The plan, including the private-SSOT
+`tests/bootstrap/test_installer_extract_deps.sh` — was applied and
+independently verified. A third fresh run at baseline `05f39f0` retained
+`tar`/`xz-utils` but exposed the remaining Node.js runtime dependency:
+`node` exited 127 because `libatomic.so.1` was absent. The Dockerfile now
+adds Ubuntu package `libatomic1`, with the same focused test extended
+through an observed RED→GREEN cycle. Deterministic checks remain green
+(`tests/check_milestone0.sh` 57/57, `tests/bootstrap/run.sh` 26/26,
+`tests/connection/run.sh` 18/18). Fresh EC2/Docker/Compose/systemd runtime
+validation remains explicitly **incomplete** — no fourth EC2/build was
+run for this local repair. The plan, including the private-SSOT
 clone handling added after the first attempt and the required AWS-approval
 STOP, is
 [`docs/FRESH_EC2_VALIDATION.md`](docs/FRESH_EC2_VALIDATION.md). The

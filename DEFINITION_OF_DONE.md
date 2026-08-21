@@ -232,12 +232,17 @@ a separately approval-gated follow-up and is not claimed as PASS.
       NOT RUN; instance/security group/encrypted `DeleteOnTermination`
       EBS/temporary SSH key were cleaned up. The smallest repair — adding
       `tar` to that prerequisite package list plus
-      `tests/bootstrap/test_installer_extract_deps.sh` — is applied
-      (deterministic: `tests/check_milestone0.sh` 57/57,
-      `tests/bootstrap/run.sh` 26/26, `tests/connection/run.sh` 18/18);
-      a fresh independent verifier pass over this repair is still
-      pending, so this item remains unchecked and a fresh real re-run is
-      still required. Not fabricated as PASS.
+      `tests/bootstrap/test_installer_extract_deps.sh` — was applied and
+      independently verified. A third fresh run at baseline `05f39f0`
+      retained `tar`/`xz-utils` but exposed the remaining Node.js runtime
+      dependency: direct reproduction confirmed `node` exit 127 with
+      `libatomic.so.1 => not found`. Ubuntu package `libatomic1` is now
+      added and the focused dependency test was observed RED then GREEN.
+      Local deterministic gates remain PASS (`tests/check_milestone0.sh`
+      57/57, `tests/bootstrap/run.sh` 26/26,
+      `tests/connection/run.sh` 18/18); all attempt-3 AWS resources were
+      deleted and verified absent. No fourth fresh EC2/build was run, so
+      this item remains unchecked. Not fabricated as PASS.
 - [x] The Claude authoring/verifying workers performed no commit, push,
       PR, deploy, credential connection, Docker/systemd runtime action, or
       AWS action. Repository integration remains with the orchestrator per

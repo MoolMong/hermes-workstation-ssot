@@ -1,18 +1,17 @@
 #!/usr/bin/env bash
-# Defect repair (Fresh EC2 validation attempt 2, 2026-08-21): a real
-# `docker compose build --no-cache` got past the retry-hardened installer
-# download (see test_installer_retry.sh), then failed exit 127 immediately
-# after "Downloading node-v26.7.0-linux-x64.tar.xz" / "Extracting to
-# ~/.hermes/node/..." — the pinned Hermes Agent installer shells out to
-# `tar` (it calls `tar xf`/`tar xzf` on the archives it downloads), but the
-# Dockerfile's pre-installer prerequisite package stage installed
-# xz-utils without tar. xz-utils alone provides `xz`/`unxz`, not `tar`
-# itself. The fix adds the `tar` package to that same apt-get install line.
-# This test proves both `tar` and `xz-utils` are present in that exact
+# Defect repair (Fresh EC2 validation attempts 2-3, 2026-08-21): the
+# retry-hardened installer download succeeded, then the pinned installer
+# reached Node.js archive extraction and exited 127. Attempt 2 established
+# that the minimal Ubuntu image needed tar alongside xz-utils. Attempt 3
+# reproduced the remaining failure directly: the extracted Node.js binary
+# exited 127 because libatomic.so.1 was absent (`libatomic.so.1 => not
+# found`). The required Ubuntu package is libatomic1.
+#
+# This test proves tar, xz-utils, and libatomic1 are present in the exact
 # pre-installer prerequisite stage, and that the existing pin/checksum/
 # retry invariants covered by test_dockerfile_pins.sh and
-# test_installer_retry.sh are untouched. Pure static text checks — never
-# invokes `docker build`, `apt-get`, or `tar`.
+# test_installer_retry.sh remain untouched. Pure static text checks — never
+# invokes docker build or apt-get.
 set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 DOCKERFILE="$REPO_ROOT/docker/Dockerfile"
@@ -42,6 +41,9 @@ if [ -n "$PREREQ_LINE_NO" ]; then
 
   echo "$PREREQ_BLOCK" | grep -qE '(^|[[:space:]])xz-utils([[:space:]]|\\|$)' && r=0 || r=1
   check "$r" "prerequisite package list includes xz-utils (still present, not removed by this fix)"
+
+  echo "$PREREQ_BLOCK" | grep -qE '(^|[[:space:]])libatomic1([[:space:]]|\\|$)' && r=0 || r=1
+  check "$r" "prerequisite package list includes libatomic1 (provides libatomic.so.1 required by pinned Node.js)"
 fi
 
 exec_line_no=$(grep -nE '^\s*bash /tmp/hermes-install\.sh' "$DOCKERFILE" | head -n1 | cut -d: -f1)

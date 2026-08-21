@@ -6,6 +6,23 @@ milestones per `BUILD_DIRECTIVE.md` §12.
 
 ## [Unreleased]
 
+### 2026-08-21 — Fresh EC2 validation: third-run Node runtime dependency repair
+
+- Attempt 3 at baseline `05f39f07a8e60a42dc856ebabea46ee37368357c`
+  confirmed `tar` and `xz-utils` were present but the extracted pinned
+  Node.js binary exited 127 because `libatomic.so.1` was missing. A direct
+  reproduction in the same pinned Ubuntu 24.04 base image reported
+  `libatomic.so.1 => not found`; Ubuntu package `libatomic1` provides it.
+- Added only `libatomic1` to the existing pre-installer prerequisite list
+  and extended `tests/bootstrap/test_installer_extract_deps.sh`. The test
+  was observed RED before the repair and GREEN afterward. Existing `tar`,
+  `xz-utils`, bounded HTTP retry, immutable commit pin, SHA-256 verification,
+  and download/verify/execute ordering remain unchanged.
+- Local gates: Milestone 0 57/57, bootstrap 26/26, connection 18/18,
+  focused pin/retry/dependency checks, and `git diff --check` all PASS.
+  Attempt-3 AWS resources were fully cleaned up. No new EC2 was created for
+  this repair, and a fresh Docker build PASS is not claimed.
+
 ### 2026-08-21 — Fresh EC2 validation: second real run, defect repair
 
 - A second authorized, official fresh Ubuntu 24.04 run happened at

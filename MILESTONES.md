@@ -226,13 +226,28 @@ after the failure was confirmed. The smallest repair — adding `tar` to
 that prerequisite package list, proven by the new
 `tests/bootstrap/test_installer_extract_deps.sh` — is applied; full
 itemized results are in `evidence/milestone-2-fresh-ec2/TEST_EVIDENCE.md`.
-Deterministic gates remain green (`tests/check_milestone0.sh` 57/57,
-`tests/bootstrap/run.sh` 26/26, `tests/connection/run.sh` 18/18), but a
-fresh independent verifier pass over this repair has not yet been
-performed, so **Fresh EC2 validation as a whole remains incomplete** and
-`DEFINITION_OF_DONE.md`'s Fresh EC2 item remains unchecked.
-`evidence/milestone-2-fresh-ec2/VERIFICATION.md` is reset to PENDING for
-this repair while preserving the attempt-1 chronology.
+Deterministic gates remained green (`tests/check_milestone0.sh` 57/57,
+`tests/bootstrap/run.sh` 26/26, `tests/connection/run.sh` 18/18), and a
+later independent verifier pass for the `tar` repair is preserved in
+`evidence/milestone-2-fresh-ec2/VERIFICATION.md`. Fresh EC2 validation as
+a whole nevertheless remained incomplete and the DoD item stayed
+unchecked.
+
+### Third Fresh EC2 validation attempt (2026-08-21) — BLOCKED, defect fixed locally
+
+A third fresh run at baseline HEAD
+`05f39f07a8e60a42dc856ebabea46ee37368357c` again passed source
+provenance, bootstrap twice with stable hashes, and Compose config. The
+build included both `tar` and `xz-utils`, but the extracted pinned Node.js
+binary exited 127. Direct reproduction in the same pinned Ubuntu 24.04
+base image confirmed `libatomic.so.1 => not found`; Ubuntu package
+`libatomic1` provides the missing runtime library. The instance, security
+group, encrypted DeleteOnTermination root EBS, temporary SSH key, and
+diagnostic bundle were deleted and verified absent. The defect-only local
+repair adds `libatomic1` and extends the existing dependency regression
+test; M0 57/57, bootstrap 26/26, connection 18/18, pin/retry checks, and
+`git diff --check` pass. No fourth EC2 was created, so Fresh EC2 validation
+remains incomplete and the DoD item remains unchecked.
 
 ## Sequencing rule
 

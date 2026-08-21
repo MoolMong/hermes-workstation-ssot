@@ -55,15 +55,14 @@ FROM ubuntu:24.04@sha256:33ceb71981b602c1a7443a53469e4dba065f7503eab3078a2d7a57a
 
 # Prerequisites the installer itself expects to already be present. The
 # installer manages uv/Python/Node/ripgrep/ffmpeg on its own, but it
-# shells out to `tar` to extract the archives it downloads (observed
-# during Fresh EC2 validation attempt 2 on 2026-08-21: the installer's
-# `tar xf`/`tar xzf` extraction of the pinned Node.js tarball failed with
-# exit 127 — `tar` not found — even though xz-utils was already present;
-# see evidence/milestone-2-fresh-ec2/TEST_EVIDENCE.md). xz-utils alone
-# provides the `xz`/`unxz` binaries, not `tar` itself.
+# shells out to `tar`/`xz` for archive extraction. Fresh EC2 attempt 3
+# additionally reproduced the extracted pinned Node.js binary exiting 127
+# because `libatomic.so.1` was absent; Ubuntu package `libatomic1` provides
+# that runtime library. See
+# evidence/milestone-2-fresh-ec2/TEST_EVIDENCE.md.
 RUN apt-get update -qq \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
-       git curl tar xz-utils ca-certificates \
+       git curl tar xz-utils libatomic1 ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # bootstrap/hermes-commit.pin and bootstrap/hermes-installer.sha256 are the
