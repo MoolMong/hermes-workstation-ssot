@@ -31,6 +31,14 @@
 #     BEFORE it is executed. A mismatch fails the build (fail closed).
 #   - The installer is told to check out the exact commit recorded in
 #     bootstrap/hermes-commit.pin via --commit, not a floating branch.
+#   - The download itself uses curl's bounded --retry/--retry-max-time
+#     backoff (see the RUN line below) so a transient HTTP 429 or network
+#     error from raw.githubusercontent.com does not fail the build on the
+#     first blip (observed during Fresh EC2 validation on 2026-08-21; see
+#     evidence/milestone-2-fresh-ec2/TEST_EVIDENCE.md). This does not
+#     relax the pinned URL or the checksum verification above — it only
+#     gives the same immutable request a bounded number of chances to
+#     succeed before failing closed exactly as before.
 #
 # Secret-free by construction: --skip-setup means the installer never
 # prompts for or writes credentials, so nothing secret can enter this
@@ -62,7 +70,7 @@ RUN set -eu; \
     HERMES_COMMIT="$(grep -vE '^[[:space:]]*#|^[[:space:]]*$' /tmp/pins/hermes-commit.pin | head -n1 | tr -d '[:space:]')"; \
     HERMES_INSTALLER_SHA256="$(grep -vE '^[[:space:]]*#|^[[:space:]]*$' /tmp/pins/hermes-installer.sha256 | head -n1 | awk '{print $1}')"; \
     HERMES_INSTALLER_URL="https://raw.githubusercontent.com/NousResearch/hermes-agent/${HERMES_COMMIT}/scripts/install.sh"; \
-    curl -fsSL -o /tmp/hermes-install.sh "$HERMES_INSTALLER_URL"; \
+    curl -fsSL --retry 6 --retry-max-time 90 --retry-connrefused -o /tmp/hermes-install.sh "$HERMES_INSTALLER_URL"; \
     echo "$HERMES_INSTALLER_SHA256  /tmp/hermes-install.sh" | sha256sum -c -; \
     bash /tmp/hermes-install.sh \
         --non-interactive \

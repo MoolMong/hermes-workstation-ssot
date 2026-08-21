@@ -50,11 +50,20 @@ fabricated as PASS; see those evidence files for the exact boundary.
 Fresh independent read-only verification returned **PASS** and is recorded
 chronologically in
 [`evidence/milestone-2/VERIFICATION.md`](evidence/milestone-2/VERIFICATION.md).
-Fresh EC2, Docker/Compose, and systemd runtime validation for the combined
-Milestone 1 + Milestone 2 stack, and any connection of real Discord/
-OpenAI/Claude/GitHub accounts, were not authorized/available and remain
-explicitly `NOT RUN`/`BLOCKED`; the plan for that validation, including
-the required AWS-approval STOP, is
+A first real Fresh EC2 validation attempt was made on 2026-08-21
+(`evidence/milestone-2-fresh-ec2/TEST_EVIDENCE.md`): AWS provisioning,
+bootstrap, idempotency, `docker compose config`, and a read-only
+pre-connection `hermes-doctor` pass all **PASS**, then the run **BLOCKED**
+at `docker compose build --no-cache` (transient HTTP 429 downloading the
+pinned installer from `raw.githubusercontent.com`, no retry/backoff at
+the time). Real account connection, service start, Discord round-trip,
+and restart/reboot were **NOT RUN**. The causing defect is fixed (see
+`docker/Dockerfile` and `tests/bootstrap/test_installer_retry.sh`), but
+Fresh EC2/Docker/Compose/systemd runtime validation for the combined
+Milestone 1 + Milestone 2 stack remains explicitly **incomplete** — a
+fresh, real re-run is still required. The plan, including the private-SSOT
+clone handling added after this attempt and the required AWS-approval
+STOP, is
 [`docs/FRESH_EC2_VALIDATION.md`](docs/FRESH_EC2_VALIDATION.md). The
 directive that scoped this milestone is
 [`MILESTONE2_DIRECTIVE.md`](MILESTONE2_DIRECTIVE.md).
@@ -94,6 +103,9 @@ been designed, tested, or verified yet.
 | [`evidence/milestone-2/TASK.md`](evidence/milestone-2/TASK.md) | Milestone 2 Context/Constraints/Acceptance Criteria (`WORK_PROTOCOL.md` §1). |
 | [`evidence/milestone-2/TEST_EVIDENCE.md`](evidence/milestone-2/TEST_EVIDENCE.md) | Milestone 2 deterministic test run evidence. Explicitly not an independent-verifier `PASS` claim — see that document for what it does and does not assert. |
 | [`evidence/milestone-2/VERIFICATION.md`](evidence/milestone-2/VERIFICATION.md) | Durable chronological record of independent semantic verification for Milestone 2; latest pass: `PASS`. |
+| [`evidence/milestone-2-fresh-ec2/TASK.md`](evidence/milestone-2-fresh-ec2/TASK.md) | Context/Constraints/Acceptance Criteria for the first Fresh EC2 validation attempt and the defect repair that followed it. |
+| [`evidence/milestone-2-fresh-ec2/TEST_EVIDENCE.md`](evidence/milestone-2-fresh-ec2/TEST_EVIDENCE.md) | Itemized PASS/FAIL/NOT RUN record of the first real Fresh EC2 run, its cleanup boundary, and the fix's deterministic regression evidence. |
+| [`evidence/milestone-2-fresh-ec2/VERIFICATION.md`](evidence/milestone-2-fresh-ec2/VERIFICATION.md) | Durable chronological record of independent semantic verification for this repair. Status: `PENDING`. |
 
 ## Repository layout (current, Milestone 0 + Milestone 1 + Milestone 2)
 

@@ -6,6 +6,51 @@ milestones per `BUILD_DIRECTIVE.md` §12.
 
 ## [Unreleased]
 
+### 2026-08-21 — Fresh EC2 validation: first real run, defect repair
+
+- The first authorized Fresh EC2 runtime validation of Milestone 1 +
+  Milestone 2 (fresh Ubuntu 24.04 LTS `t3.small`, `ap-northeast-2`) ran
+  `docker compose build --no-cache` and hit **HTTP 429** twice (including
+  after a manual 60-second wait) at the `docker/Dockerfile` `RUN` step
+  that downloads the pinned Hermes Agent installer from its immutable,
+  commit-scoped `raw.githubusercontent.com` URL. The `curl` invocation had
+  no retry/backoff, so a single transient rate-limit response failed the
+  whole build. Fixed by adding a bounded `--retry 6 --retry-max-time 90
+  --retry-connrefused` policy to that `curl` line only, leaving the pinned
+  URL, `-fsSL` fail-closed flags, SHA-256 verification, and the
+  download → verify → execute ordering unchanged. Covered by the new
+  `tests/bootstrap/test_installer_retry.sh` (16 checks).
+- The run also found that `docs/FRESH_EC2_VALIDATION.md` §5's assumed
+  unauthenticated `git clone` of the SSOT repository fails because the
+  repository is private. To continue diagnosing the build failure on the
+  same live instance without expanding scope into authenticated-clone UX
+  work mid-run, a credential-free `git bundle` containing exactly the
+  remote `main` SHA was transferred out-of-band. This is recorded as an
+  explicit validation process deviation, not a passing `git clone` step,
+  and not authorization to make the repository public — see
+  `DEVIATIONS.md`.
+- Actual deterministic results for this repair: `bash
+  tests/check_milestone0.sh` 57/57, `bash tests/bootstrap/run.sh` 24/24,
+  `bash tests/connection/run.sh` 18/18, all PASS; `git diff --check`
+  clean.
+- Runtime/account steps remain **NOT RUN**: `hermes-connect` with real
+  integrations, credential persistence across restart, post-connection
+  `hermes-doctor`, Hermes service start, gateway start, Discord
+  connection, a real Discord round-trip response, restart/reboot
+  behavior. None of these is claimed PASS or FAIL — the run stopped at
+  the Docker build failure before any of them could be reached, and the
+  instance/security group/volume/SSH key from this run were deleted
+  after the failure was confirmed reproducible.
+- Full itemized results:
+  [`evidence/milestone-2-fresh-ec2/TEST_EVIDENCE.md`](evidence/milestone-2-fresh-ec2/TEST_EVIDENCE.md);
+  task context:
+  [`evidence/milestone-2-fresh-ec2/TASK.md`](evidence/milestone-2-fresh-ec2/TASK.md).
+  Independent verification is recorded separately in
+  `evidence/milestone-2-fresh-ec2/VERIFICATION.md` and was **PENDING** as
+  of this repair pass. Fresh EC2 validation as a whole remains
+  **incomplete**; a fresh, real re-run against this fix is still
+  required before it can be claimed PASS.
+
 ## [0.1.0-m2] — 2026-08-21 — Milestone 2: Connection UX
 
 ### Added

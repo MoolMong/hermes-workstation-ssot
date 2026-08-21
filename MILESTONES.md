@@ -186,6 +186,27 @@ milestone noted):
   (deferred to the approved Fresh EC2 validation in
   `docs/FRESH_EC2_VALIDATION.md`)
 
+### First Fresh EC2 validation attempt (2026-08-21) — BLOCKED, defect fixed
+
+The first authorized Fresh EC2 run against this milestone's plan happened
+at HEAD `153a0f45c72b0d848d4b082230e7c3529606c046`. It reached bootstrap
+(pass, idempotent), `docker compose config`, and a read-only
+pre-connection `hermes-doctor` pass, then stopped: `docker compose build
+--no-cache` failed twice on a transient HTTP 429 from
+`raw.githubusercontent.com` while downloading the pinned Hermes Agent
+installer, which had no retry/backoff. Everything from the image build
+onward (real account connection, service start, Discord round-trip,
+restart/reboot) was **NOT RUN**, not FAIL. The instance and all AWS
+resources for that run were deleted afterward. Full itemized results:
+`evidence/milestone-2-fresh-ec2/TEST_EVIDENCE.md`. The causing defect is
+now fixed (`docker/Dockerfile`'s installer download now carries a bounded
+retry/backoff policy, proven by `tests/bootstrap/test_installer_retry.sh`)
+but **Fresh EC2 validation itself remains incomplete** — this milestone's
+status above is unchanged by this attempt, and a fresh, real re-run is
+still required before it can be claimed PASS.
+`evidence/milestone-2-fresh-ec2/VERIFICATION.md` is intentionally
+PENDING.
+
 ## Sequencing rule
 
 Do not begin implementation of a later milestone before the current one's

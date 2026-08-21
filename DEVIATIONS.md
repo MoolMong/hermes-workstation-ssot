@@ -41,6 +41,51 @@ implementation proceeds.
   Milestone 1 output within the existing design, not an architectural
   deviation or new component.
 
+## Fresh EC2 validation (post-Milestone-2, defect repair)
+
+**One diagnostic-only process deviation**, recorded per the three-part
+format required above:
+
+1. **Concrete failure mode observed:** during the first authorized Fresh
+   EC2 runtime validation run, the unauthenticated `git clone
+   https://github.com/MoolMong/hermes-workstation-ssot.git` step assumed
+   by `docs/FRESH_EC2_VALIDATION.md` §5 (as it stood at repository HEAD
+   `153a0f45c72b0d848d4b082230e7c3529606c046`) failed: the SSOT repository
+   is private, so anonymous HTTPS clone is rejected.
+2. **Why the current minimal design could not solve it:** by design, no
+   credential is present on a fresh instance before `hermes-connect` has
+   run (Milestone 1's credential-free bootstrap, Milestone 2's
+   connect-on-demand model), so an authenticated clone was not available
+   at this point in the flow; and converting the SSOT repository to
+   public is a repository-visibility decision reserved to the operator
+   (`SECURITY.md`'s redistribution model, `CLAUDE.md` "Existing
+   Factory/EC2"), not something this validation run or repair pass is
+   authorized to change. Neither option could be exercised without
+   expanding scope mid-run.
+3. **Smallest diagnostic-only process deviation:** a credential-free `git
+   bundle` containing exactly the remote `main` SHA was transferred to
+   the instance out-of-band, so diagnosis of the actual defect (the
+   Docker build failure below) could continue on the same live instance
+   without waiting for a second run.
+
+This deviation is explicitly **not** a `git clone` PASS — item 0a in
+`evidence/milestone-2-fresh-ec2/TEST_EVIDENCE.md` records the clone
+attempt itself as **FAIL**, with the bundle transfer recorded separately
+as item 0b — and it is **not** a production bootstrap design: no
+long-term bundle-transfer mechanism was added to `bootstrap/install.sh`,
+`docker/`, or any other shipped path. `docs/FRESH_EC2_VALIDATION.md` §5
+is updated to require either interactive GitHub authentication before
+`git clone` or this explicitly labeled provenance-verified bundle
+diagnostic path for future runs against a private SSOT repository, still
+without claiming authorization to make the repository public.
+
+The separately-fixed defect that this same run found — the pinned
+installer `curl` step failing closed on transient HTTP 429 with no
+retry/backoff — is a bug fix within the existing design (a bounded
+`--retry`/`--retry-max-time`/`--retry-connrefused` policy on that one
+`curl` line), not an architectural deviation, and is recorded in
+`CHANGELOG.md`'s Unreleased section rather than here.
+
 ## Future milestones
 
 Any deviation discovered during Milestones 3–7 must be recorded here, at

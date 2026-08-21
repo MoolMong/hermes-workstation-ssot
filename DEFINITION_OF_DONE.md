@@ -212,7 +212,15 @@ a separately approval-gated follow-up and is not claimed as PASS.
 - [ ] **Fresh EC2 provisioning, Docker/Compose build+run, and systemd
       enable/start validation for the combined Milestone 1 + Milestone 2
       stack**, per the plan in `docs/FRESH_EC2_VALIDATION.md`. Status:
-      **NOT RUN / BLOCKED** — not authorized/available; not fabricated as
+      **NOT COMPLETE** — a first real attempt was made on 2026-08-21
+      (`evidence/milestone-2-fresh-ec2/TEST_EVIDENCE.md`) and reached
+      bootstrap/idempotency/`docker compose config`/pre-connection
+      `hermes-doctor` PASS, then BLOCKED at `docker compose build
+      --no-cache` (transient HTTP 429 downloading the pinned installer,
+      no retry/backoff). Everything from the image build onward was NOT
+      RUN. The causing defect is fixed
+      (`tests/bootstrap/test_installer_retry.sh`); a fresh real re-run is
+      still required before this item can be checked. Not fabricated as
       PASS.
 - [x] The Claude authoring/verifying workers performed no commit, push,
       PR, deploy, credential connection, Docker/systemd runtime action, or

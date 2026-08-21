@@ -207,6 +207,9 @@ evidence/
   milestone-2/TASK.md                  (M2 — execution specification)
   milestone-2/TEST_EVIDENCE.md         (M2 — deterministic evidence)
   milestone-2/VERIFICATION.md          (M2 — verifier record)
+  milestone-2-fresh-ec2/TASK.md            (M2 — first Fresh EC2 run + repair spec)
+  milestone-2-fresh-ec2/TEST_EVIDENCE.md   (M2 — first Fresh EC2 run evidence)
+  milestone-2-fresh-ec2/VERIFICATION.md    (M2 — verifier record, PENDING)
 
 tests/
   check_milestone0.sh                  (M0)

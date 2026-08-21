@@ -32,6 +32,25 @@ runtime steps that require a real EC2 instance, which remain
 explicitly approves AWS resource creation (`MILESTONE2_DIRECTIVE.md` §11,
 "Do not create or modify AWS resources yet").
 
+**Status update (2026-08-21):** the first authorized real run of this
+plan has since happened, at repository HEAD
+`153a0f45c72b0d848d4b082230e7c3529606c046`. It found two things this
+document did not account for at the time: the SSOT repository is
+private, so §5 as originally written (an unauthenticated `git clone`)
+does not work — see the revised §5 below; and `docker compose build
+--no-cache` failed twice on a transient HTTP 429 from
+`raw.githubusercontent.com` while downloading the pinned Hermes Agent
+installer, because that download had no retry/backoff. The full itemized
+result of that run is `evidence/milestone-2-fresh-ec2/TEST_EVIDENCE.md`;
+the causing defect is fixed (`docker/Dockerfile`'s installer `curl` line
+now carries a bounded retry/backoff policy — see
+`tests/bootstrap/test_installer_retry.sh`). **Fresh EC2 validation
+remains incomplete** — everything from the Docker image build onward
+(Milestone 1 §12 items 3-15) was not exercised and needs a fresh, real
+re-run against the fixed repository before it can be claimed PASS.
+`evidence/milestone-2-fresh-ec2/VERIFICATION.md` is intentionally
+PENDING.
+
 ## 1. Supported EC2 OS/AMI assumptions
 
 - Base AMI: current **Ubuntu Server 22.04 LTS (x86_64)** or **24.04 LTS
@@ -87,13 +106,70 @@ explicitly approves AWS resource creation (`MILESTONE2_DIRECTIVE.md` §11,
 
 ## 5. Exact bootstrap command
 
-From an SSH session on the fresh instance, as a user with `sudo`:
+The SSOT repository (`MoolMong/hermes-workstation-ssot`) is **private**.
+Converting it to public is **not authorized by this document or by any
+validation run performed under it** — that is a repository-visibility
+decision reserved to the operator, not something a validation pass may
+decide on its own. This means an anonymous, unauthenticated `git clone`
+of the HTTPS URL does not work on a genuinely fresh instance and must not
+be assumed to. Use one of the two supported paths below.
+
+### 5a. Supported path — interactive GitHub authentication before clone
+
+The preferred, fully-reproducible path. From an SSH session on the fresh
+instance, as a user with `sudo`:
 
 ```bash
+sudo apt-get update -qq && sudo apt-get install -y -qq gh
+gh auth login          # interactive, HTTPS, operator's own GitHub account
+gh auth setup-git
 git clone https://github.com/MoolMong/hermes-workstation-ssot.git
 cd hermes-workstation-ssot
 sudo bootstrap/install.sh
 ```
+
+This exercises the same `gh`/HTTPS credential-helper pattern
+`bootstrap/connect.sh --github` uses later in the flow (§6), just brought
+forward far enough to clone the private SSOT itself, and is the path that
+should be used for any run whose evidence is meant to demonstrate
+`git clone ... PASS`.
+
+### 5b. Diagnostic-only path — provenance-verified bundle transfer
+
+Only for continuing diagnosis on a run already in progress when 5a is not
+practical mid-run (for example, GitHub CLI is not yet installed and
+authenticating would materially change what is being tested at that
+moment). This path must be **explicitly labeled as a bundle diagnostic**
+in any evidence it produces — it must never be recorded as a `git clone`
+PASS, because it exercises none of the clone/authentication path §5a and
+`bootstrap/connect.sh --github` actually exercise.
+
+From the operator's own machine (not a step run on the instance):
+
+```bash
+git bundle create hermes-ssot.bundle main
+# Verify the bundle's recorded tip SHA matches the known-good remote SHA
+# before transferring it — this is the provenance check that makes this
+# path acceptable as a diagnostic substitute:
+git bundle list-heads hermes-ssot.bundle
+```
+
+Transfer `hermes-ssot.bundle` to the instance out-of-band (e.g. `scp`),
+then on the instance:
+
+```bash
+git clone hermes-ssot.bundle hermes-workstation-ssot
+cd hermes-workstation-ssot
+git log -1 --format=%H   # confirm this matches the known-good remote SHA
+sudo bootstrap/install.sh
+```
+
+Record in evidence, verbatim: "credential-free git bundle diagnostic,
+verified against remote SHA `<sha>` — not a `git clone` PASS." See
+`evidence/milestone-2-fresh-ec2/TEST_EVIDENCE.md` item 0b for the exact
+wording used the first time this path was needed.
+
+### Idempotency
 
 `install.sh` is idempotent (`tests/bootstrap/test_idempotency.sh`); running
 it a second time must converge with no further changes.
