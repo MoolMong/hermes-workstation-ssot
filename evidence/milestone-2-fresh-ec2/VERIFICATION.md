@@ -10,11 +10,11 @@ Deterministic command evidence is separate, at
 
 ## Status: PASS
 
-The latest chronological pass below is Pass 3: a genuinely fresh,
+The latest chronological pass below is Pass 4: a genuinely fresh,
 independent, read-only Claude Code session returned explicit
-`VERDICT: PASS` after independently rerunning every deterministic gate and
-reviewing the repaired final state. Earlier failed reviews remain recorded
-for evidence integrity.
+`VERDICT: PASS` for the attempt-2 `tar` prerequisite repair. Pass 3 remains
+the independent PASS for the earlier retry repair; earlier failures remain
+recorded for evidence integrity.
 
 ## Pass 1 — 2026-08-21 — FAIL (non-actionable output)
 
@@ -71,5 +71,36 @@ Semantic review confirmed:
 - no Milestone 3+ implementation or forbidden component was introduced;
 - Milestone 2 remains complete only within its prior static/local boundary,
   while the full Fresh EC2 validation remains incomplete.
+
+**Final verifier line:** `VERDICT: PASS`
+
+## Pass 4 — 2026-08-21 — PASS
+
+Verifier identity and isolation: a new Claude Code 2.1.233 print-mode
+session restricted to `Read` and `Bash`, with no session persistence and no
+permission to edit, commit, push, access credentials, or invoke AWS/network
+operations.
+
+Independent deterministic reruns:
+
+- Milestone 0: **57/57 PASS**
+- Milestone 1/bootstrap: **26/26 PASS**
+- Milestone 2/connection: **18/18 PASS**
+- `git diff --check`: **PASS**, no output
+
+Semantic review confirmed:
+
+- `tar` and `xz-utils` are installed together in the exact prerequisite
+  package stage before the pinned installer executes;
+- `tests/bootstrap/test_installer_extract_deps.sh` meaningfully checks the
+  package presence and ordering and reports eight passing assertions;
+- the immutable URL, commit pin, checksum-before-execution ordering, and
+  bounded retry policy are unchanged;
+- Attempt 2 evidence and cleanup claims are honest, all later account and
+  runtime steps remain NOT RUN, and Fresh EC2 completion remains unchecked;
+- README, milestones, Definition of Done, and changelog now consistently
+  describe Attempt 2 without fabricating Docker/runtime PASS;
+- no secrets, AWS resource IDs, IP addresses, Milestone 3+ implementation,
+  or forbidden components were introduced.
 
 **Final verifier line:** `VERDICT: PASS`

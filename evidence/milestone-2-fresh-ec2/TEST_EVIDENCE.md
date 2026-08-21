@@ -155,3 +155,169 @@ Result: **PASS** (exit 0, no output).
 - `evidence/milestone-2-fresh-ec2/VERIFICATION.md` is intentionally left
   **PENDING** — no independent verifier pass has reviewed this repair
   yet.
+
+---
+
+## Attempt 2 (2026-08-21) — retry fix confirmed working; new defect found and fixed: missing `tar`
+
+A second authorized, genuinely fresh Fresh EC2 run was performed against
+repository HEAD `000f06b57d06a495236cad5682ffc0356bcc70de` (the commit
+containing the attempt-1 retry fix and its independently-verified `PASS`
+chronology in `VERIFICATION.md` Passes 1-3). This record documents that
+run honestly, including the new defect it found. It is **not** a PASS
+claim for Fresh EC2 validation as a whole.
+
+### Run environment
+
+- AMI: official Ubuntu Server 24.04 LTS (x86_64), genuinely freshly
+  launched — not a reused/pre-existing instance.
+- Instance type: `t3.small`.
+- Source delivered to the instance: an SSH/provenance-matched bundle at
+  the exact HEAD `000f06b57d06a495236cad5682ffc0356bcc70de` (the same
+  explicitly-labeled provenance-verified bundle diagnostic path recorded
+  as a deviation in attempt 1, per `docs/FRESH_EC2_VALIDATION.md`'s
+  updated §5 — not a `git clone` PASS claim).
+- No credential was entered on the instance at any point during the run.
+
+### Itemized results
+
+| # | Item | Result |
+|---|---|---|
+| — | SSH reachability + provenance-matched bundle transfer at exact HEAD `000f06b` | **PASS** |
+| 1 | Fresh instance bootstraps from the SSOT (`bootstrap/install.sh`, first run) | **PASS** |
+| 2 | Bootstrap is repeatable/idempotent (`bootstrap/install.sh`, second run, stable hashes) | **PASS** |
+| — | `docker compose config` | **PASS** |
+| — | Attempt-1 retry fix, exercised live | **PASS** — `raw.githubusercontent.com` returned HTTP 429 three times on the pinned installer download; the fourth attempt succeeded under the bounded `--retry 6 --retry-max-time 90 --retry-connrefused` policy. Pinned installer checksum verified OK; Python 3.11 installed by the installer. |
+| 3/4 | Hermes image actually builds | **FAIL** — the same `docker compose build --no-cache` failed **exit 127**, immediately after the installer logged `Downloading node-v26.7.0-linux-x64.tar.xz` and `Extracting to ~/.hermes/node/...`. This is the defect this change repairs. |
+| 5-14 | systemd unit load through reboot behavior | **NOT RUN** — blocked by item 3/4; never reached. |
+| — | Cleanup: instance, security group, encrypted root EBS (`DeleteOnTermination=true`), local temporary SSH key all deleted | **PASS** |
+
+### The new defect
+
+`bootstrap/hermes-commit.pin`'s pinned installer source (fetched and
+checksum-verified locally as part of this repair, matching the checksum
+already recorded in `bootstrap/hermes-installer.sha256` — no re-pin was
+needed) extracts its downloaded archives with `tar` — its own lines
+952-956 call `tar xf`/`tar xzf` directly. `docker/Dockerfile`'s
+prerequisite package stage (the `RUN apt-get ... git curl xz-utils
+ca-certificates` line, which runs before the pinned installer executes)
+installed `xz-utils` but not `tar` itself: `xz-utils` provides the
+`xz`/`unxz` binaries the installer's checksum/decompression steps use,
+not the `tar` binary the installer separately shells out to for archive
+extraction. On Ubuntu 24.04, `tar` is not guaranteed present in this
+minimal, `--no-install-recommends` build stage, so the installer's `tar
+xf`/`tar xzf` call failed with exit 127 (command not found).
+
+### Cleanup boundary
+
+Cleanup was performed after the build failure was confirmed and before
+any further diagnosis or fix attempt on the live instance — the same
+policy as attempt 1. No instance, security group, or volume from this run
+remains.
+
+### Overall result (attempt 2)
+
+**Fresh EC2 validation: still BLOCKED at the Docker image build step**,
+now later in the build than attempt 1 — the attempt-1 retry fix is
+confirmed working against a real, live HTTP 429 sequence, and the build
+progressed past installer download/checksum verification and Python
+provisioning before failing on Node.js archive extraction. Items 0-2 and
+the retry mechanism passed; item 3/4 failed on a different, new cause
+(missing `tar`, not HTTP 429); items 5-14 remain **NOT RUN**, not FAIL.
+Fresh EC2 runtime validation as a whole remains **incomplete** and
+requires a fresh, real re-run against the fix below before it can be
+claimed PASS.
+
+### The fix and its deterministic regression evidence
+
+`docker/Dockerfile`'s pre-installer prerequisite `apt-get install` line
+now includes `tar` alongside the existing `git curl xz-utils
+ca-certificates`. This does not touch the pinned commit/checksum/URL, the
+attempt-1 retry policy, the download → verify → execute ordering, or the
+separate, unrelated GitHub CLI keyring stage.
+
+Command:
+
+```bash
+bash tests/bootstrap/test_installer_extract_deps.sh
+```
+
+Result: **PASS** (exit 0). All 8 checks passed: the prerequisite
+`apt-get install` line includes both `tar` and `xz-utils`, that stage
+runs before the pinned installer executes, and the attempt-1 retry policy
+on the installer `curl` line is unaffected.
+
+Command:
+
+```bash
+bash tests/bootstrap/test_dockerfile_pins.sh
+```
+
+Result: **PASS** (exit 0, unmodified from before this fix) — confirms the
+pinned commit/SHA-256/URL/`--commit` invariants and the
+download-then-verify-then-execute ordering are unaffected by the added
+package.
+
+Command:
+
+```bash
+bash tests/bootstrap/test_installer_retry.sh
+```
+
+Result: **PASS** (exit 0, unmodified from before this fix) — confirms the
+attempt-1 bounded retry/backoff policy on the installer `curl` line is
+unaffected by this fix.
+
+Command:
+
+```bash
+bash tests/bootstrap/run.sh
+```
+
+Result: **PASS** (exit 0). 26 checks, 0 failures (previously 24; +2 from
+the new `test_installer_extract_deps.sh` syntax check and test-script
+run).
+
+Command:
+
+```bash
+bash tests/connection/run.sh
+```
+
+Result: **PASS** (exit 0), unchanged by this repair — no Milestone 2
+connection script was touched.
+
+Command:
+
+```bash
+bash tests/check_milestone0.sh
+```
+
+Result: **PASS** (exit 0), 57/57 checks — unchanged by this repair.
+
+Command:
+
+```bash
+git diff --check
+```
+
+Result: **PASS** (exit 0, no output).
+
+### What this evidence does not claim (attempt 2)
+
+- This repair pass did not create, modify, or access any AWS resource,
+  real credential, the old EC2, Factory, or Codex.
+- This repair pass did not re-run the Fresh EC2 validation against the
+  `tar` fix — it is deterministically tested locally only. A fresh, real
+  Fresh EC2 run is still required before Fresh EC2 validation can be
+  claimed PASS.
+- Docker build/runtime success is **not** claimed — the build was not
+  re-attempted live against this fix in this repair pass.
+- `evidence/milestone-2-fresh-ec2/VERIFICATION.md`'s Passes 1-3 (the
+  attempt-1 retry-fix verification chronology) are preserved as-is, not
+  erased or reinterpreted. The document's overall status is reset to
+  **PENDING** pending a fresh independent verifier pass over this `tar`
+  repair specifically — see that file.
+- Real account connection, service start, Discord round-trip, and
+  restart/reboot were **NOT RUN** in attempt 2, same as attempt 1 — not
+  claimed PASS, FAIL, or anything else.

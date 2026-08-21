@@ -159,3 +159,108 @@ are small and mutually referential (the evidence file names the exact
 defect the test proves is fixed), so splitting this across independent
 workers would not have improved correctness or speed
 (`WORK_PROTOCOL.md` §2-§3).
+
+---
+
+## Attempt 2 — second defect-only repair (this change)
+
+Written for the second authorized Fresh EC2 runtime validation attempt,
+run against repository HEAD `000f06b57d06a495236cad5682ffc0356bcc70de`
+(the commit containing the attempt-1 retry fix, above, plus its
+independently-verified `PASS` chronology in `VERIFICATION.md` Passes
+1-3). Same defect-only repair discipline as attempt 1: Milestone 2
+remains complete within its documented static/local boundary, and Fresh
+EC2 runtime validation remains incomplete pending a re-run against this
+fix.
+
+### Goal
+
+Fix the concrete new defect that stopped the second real Fresh EC2
+validation run — which confirmed the attempt-1 retry fix works against a
+real, live HTTP 429 sequence, then failed later in the same build step —
+add deterministic regression coverage for the fix, and record the actual
+attempt-2 run honestly, without claiming Docker build or runtime success
+and without erasing the attempt-1 evidence or verification chronology.
+
+### Context
+
+- Baseline: repository HEAD `000f06b57d06a495236cad5682ffc0356bcc70de`
+  (`fix: harden fresh EC2 bootstrap validation`), the attempt-1 repair
+  commit.
+- Run environment: official fresh Ubuntu 24.04 LTS (x86_64) AMI,
+  `t3.small`; source delivered via the same SSH/provenance-matched bundle
+  diagnostic path used in attempt 1 (not a `git clone` PASS claim), at
+  the exact HEAD above.
+- `docker compose build --no-cache` this time got past installer
+  download: `raw.githubusercontent.com` returned HTTP 429 three times,
+  the fourth attempt succeeded under the attempt-1 retry policy, the
+  pinned installer checksum verified OK, and Python 3.11 was installed —
+  proving the attempt-1 fix works live. The build then failed **exit
+  127** immediately after `Downloading node-v26.7.0-linux-x64.tar.xz` /
+  `Extracting to ~/.hermes/node/...`.
+- The pinned installer source (`bootstrap/hermes-commit.pin`) was fetched
+  and checksum-verified locally as part of this repair (no re-pin
+  needed); its lines 952-956 call `tar xf`/`tar xzf` directly to extract
+  downloaded archives.
+- `docker/Dockerfile`'s prerequisite package stage installs `git curl
+  xz-utils ca-certificates` but omits `tar`. `xz-utils` provides
+  `xz`/`unxz`, not the `tar` binary itself — so the installer's own `tar`
+  call failed with exit 127 (command not found) on the minimal,
+  `--no-install-recommends` base image.
+- Instance/security group/encrypted root EBS (`DeleteOnTermination=true`)
+  /temporary SSH key were fully cleaned up after the failure was
+  confirmed — same cleanup discipline as attempt 1.
+- Account connection, service start, Discord round-trip, and
+  restart/reboot were **NOT RUN** — the run stopped at the build failure
+  before any of them could be reached.
+
+### Constraints (same as attempt 1, restated for this pass)
+
+- Defect-only repair: the smallest change that makes the pinned
+  installer's archive extraction step succeed — adding the missing
+  distro package it depends on — without weakening the pinned
+  commit/checksum/URL gate or the attempt-1 retry policy.
+- No AWS/network/credentials, Factory, or Codex access for this repair
+  pass. No commit, push, or Milestone 3+ implementation.
+- Do not claim Docker build/runtime PASS — this repair is deterministic
+  and local only; a fresh, real re-run is still required.
+- Preserve the attempt-1 evidence and `VERIFICATION.md` Passes 1-3 as-is;
+  set the document's overall status to **PENDING** for a fresh verifier
+  pass over this specific repair, without erasing the earlier PASS.
+
+### Acceptance Criteria
+
+- `docker/Dockerfile`'s prerequisite package stage includes `tar`
+  alongside the existing `git curl xz-utils ca-certificates`, with no
+  other line changed.
+- A new deterministic test (`tests/bootstrap/test_installer_extract_deps.sh`)
+  proves both `tar` and `xz-utils` are present in that exact pre-installer
+  stage, that the stage runs before the pinned installer executes, and
+  that the attempt-1 retry policy is untouched.
+- `tests/bootstrap/test_dockerfile_pins.sh` and
+  `tests/bootstrap/test_installer_retry.sh` still pass unmodified.
+- `evidence/milestone-2-fresh-ec2/TEST_EVIDENCE.md` records the attempt-2
+  itemized results, the new defect, the fix, and its regression evidence
+  as an appended section — the attempt-1 section is preserved, not
+  rewritten.
+- `evidence/milestone-2-fresh-ec2/VERIFICATION.md` preserves Passes 1-3
+  and records the attempt-2 repair as awaiting a fresh verifier pass;
+  overall status set to **PENDING**.
+- `CHANGELOG.md`, `README.md`, `MILESTONES.md`, `DEFINITION_OF_DONE.md`
+  updated narrowly to reflect the second attempt and its fix, without
+  changing Milestone 2's completion status or fabricating a Fresh EC2
+  PASS.
+- `bash tests/check_milestone0.sh`, `bash tests/bootstrap/run.sh`, and
+  `bash tests/connection/run.sh` all exit 0. `git diff --check` reports no
+  whitespace errors.
+- No AWS action, no credential creation, no commit, no push is performed
+  by this pass.
+
+### Relevant Files (attempt 2)
+
+- `docker/Dockerfile` (fixed — prerequisite package list only)
+- `tests/bootstrap/test_installer_extract_deps.sh` (new)
+- `evidence/milestone-2-fresh-ec2/TASK.md` (this section),
+  `TEST_EVIDENCE.md`, `VERIFICATION.md` (updated)
+- `CHANGELOG.md`, `README.md`, `MILESTONES.md`, `DEFINITION_OF_DONE.md`
+  (updated narrowly)

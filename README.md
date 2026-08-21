@@ -58,11 +58,28 @@ at `docker compose build --no-cache` (transient HTTP 429 downloading the
 pinned installer from `raw.githubusercontent.com`, no retry/backoff at
 the time). Real account connection, service start, Discord round-trip,
 and restart/reboot were **NOT RUN**. The causing defect is fixed (see
-`docker/Dockerfile` and `tests/bootstrap/test_installer_retry.sh`), but
+`docker/Dockerfile` and `tests/bootstrap/test_installer_retry.sh`).
+A second authorized attempt, also on 2026-08-21 at baseline
+`000f06b57d06a495236cad5682ffc0356bcc70de`, confirmed that retry fix
+working live (three real HTTP 429s, then success, checksum OK) and got
+further — SSH/provenance diagnostic bundle, bootstrap twice, hash
+stability, and `docker compose config` all **PASS** again — before the
+Docker build itself failed **exit 127**: the pinned installer's own `tar
+xf`/`tar xzf` archive extraction had no `tar` binary available, since
+`docker/Dockerfile`'s prerequisite stage installed `xz-utils` but not
+`tar`. Account/service/Discord/restart/reboot steps were again **NOT
+RUN**; instance/security group/encrypted `DeleteOnTermination` EBS/
+temporary SSH key were cleaned up. The smallest repair — adding `tar` to
+that prerequisite package list, plus
+`tests/bootstrap/test_installer_extract_deps.sh` — is applied; see
+`evidence/milestone-2-fresh-ec2/TEST_EVIDENCE.md`. Deterministic checks
+remain green (`tests/check_milestone0.sh` 57/57,
+`tests/bootstrap/run.sh` 26/26, `tests/connection/run.sh` 18/18), but a
+new independent verifier pass over this repair is still pending, so
 Fresh EC2/Docker/Compose/systemd runtime validation for the combined
 Milestone 1 + Milestone 2 stack remains explicitly **incomplete** — a
 fresh, real re-run is still required. The plan, including the private-SSOT
-clone handling added after this attempt and the required AWS-approval
+clone handling added after the first attempt and the required AWS-approval
 STOP, is
 [`docs/FRESH_EC2_VALIDATION.md`](docs/FRESH_EC2_VALIDATION.md). The
 directive that scoped this milestone is

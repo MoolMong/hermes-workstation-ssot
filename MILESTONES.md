@@ -207,6 +207,33 @@ still required before it can be claimed PASS.
 `evidence/milestone-2-fresh-ec2/VERIFICATION.md` is intentionally
 PENDING.
 
+### Second Fresh EC2 validation attempt (2026-08-21) — BLOCKED, defect fixed
+
+A second authorized, official fresh Ubuntu 24.04 run happened at baseline
+HEAD `000f06b57d06a495236cad5682ffc0356bcc70de` (the attempt-1 retry-fix
+commit). SSH reachability/provenance diagnostic bundle transfer,
+bootstrap run twice with stable hashes, and `docker compose config` all
+**PASS** again. The attempt-1 HTTP 429 retry fix was confirmed working
+live: `raw.githubusercontent.com` returned 429 three times, the retry
+succeeded, and the pinned installer checksum verified OK. `docker compose
+build --no-cache` then failed **exit 127** later in the same step: the
+pinned installer calls `tar xf`/`tar xzf` to extract downloaded archives,
+but `docker/Dockerfile`'s prerequisite package stage installed `xz-utils`
+without `tar` itself. Account/service/Discord/restart/reboot steps were
+again **NOT RUN**. Instance, security group, encrypted root EBS
+(`DeleteOnTermination=true`), and the temporary SSH key were cleaned up
+after the failure was confirmed. The smallest repair — adding `tar` to
+that prerequisite package list, proven by the new
+`tests/bootstrap/test_installer_extract_deps.sh` — is applied; full
+itemized results are in `evidence/milestone-2-fresh-ec2/TEST_EVIDENCE.md`.
+Deterministic gates remain green (`tests/check_milestone0.sh` 57/57,
+`tests/bootstrap/run.sh` 26/26, `tests/connection/run.sh` 18/18), but a
+fresh independent verifier pass over this repair has not yet been
+performed, so **Fresh EC2 validation as a whole remains incomplete** and
+`DEFINITION_OF_DONE.md`'s Fresh EC2 item remains unchecked.
+`evidence/milestone-2-fresh-ec2/VERIFICATION.md` is reset to PENDING for
+this repair while preserving the attempt-1 chronology.
+
 ## Sequencing rule
 
 Do not begin implementation of a later milestone before the current one's

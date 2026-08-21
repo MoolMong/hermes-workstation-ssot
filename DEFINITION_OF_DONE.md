@@ -219,9 +219,25 @@ a separately approval-gated follow-up and is not claimed as PASS.
       --no-cache` (transient HTTP 429 downloading the pinned installer,
       no retry/backoff). Everything from the image build onward was NOT
       RUN. The causing defect is fixed
-      (`tests/bootstrap/test_installer_retry.sh`); a fresh real re-run is
-      still required before this item can be checked. Not fabricated as
-      PASS.
+      (`tests/bootstrap/test_installer_retry.sh`). A second authorized
+      attempt on 2026-08-21, at baseline
+      `000f06b57d06a495236cad5682ffc0356bcc70de`, confirmed that retry fix
+      live (three real HTTP 429s then success, checksum OK) and again
+      passed SSH/provenance diagnostic bundle transfer, bootstrap twice
+      with stable hashes, and `docker compose config`, before the Docker
+      build failed **exit 127**: the pinned installer's `tar xf`/`tar
+      xzf` archive extraction had no `tar` binary, since
+      `docker/Dockerfile`'s prerequisite stage installed `xz-utils`
+      without `tar`. Account/service/Discord/restart/reboot were again
+      NOT RUN; instance/security group/encrypted `DeleteOnTermination`
+      EBS/temporary SSH key were cleaned up. The smallest repair — adding
+      `tar` to that prerequisite package list plus
+      `tests/bootstrap/test_installer_extract_deps.sh` — is applied
+      (deterministic: `tests/check_milestone0.sh` 57/57,
+      `tests/bootstrap/run.sh` 26/26, `tests/connection/run.sh` 18/18);
+      a fresh independent verifier pass over this repair is still
+      pending, so this item remains unchecked and a fresh real re-run is
+      still required. Not fabricated as PASS.
 - [x] The Claude authoring/verifying workers performed no commit, push,
       PR, deploy, credential connection, Docker/systemd runtime action, or
       AWS action. Repository integration remains with the orchestrator per

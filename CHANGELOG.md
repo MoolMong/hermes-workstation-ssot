@@ -6,6 +6,42 @@ milestones per `BUILD_DIRECTIVE.md` §12.
 
 ## [Unreleased]
 
+### 2026-08-21 — Fresh EC2 validation: second real run, defect repair
+
+- A second authorized, official fresh Ubuntu 24.04 run happened at
+  baseline `000f06b57d06a495236cad5682ffc0356bcc70de` (the attempt-1
+  retry-fix commit). SSH reachability/provenance diagnostic bundle
+  transfer, bootstrap run twice with stable hashes, and `docker compose
+  config` all **PASS**. The attempt-1 HTTP 429 retry fix was confirmed
+  working live: `raw.githubusercontent.com` returned 429 three times,
+  the retry succeeded, and the pinned installer checksum verified OK.
+  `docker compose build --no-cache` then failed **exit 127** later in the
+  same step: the pinned installer calls `tar xf`/`tar xzf` to extract
+  downloaded archives, but `docker/Dockerfile`'s prerequisite package
+  stage installed `xz-utils` without `tar` itself. Fixed by adding `tar`
+  to that same prerequisite `apt-get install` line only, leaving the
+  pinned commit/checksum/URL and the attempt-1 retry policy unchanged.
+  Covered by the new `tests/bootstrap/test_installer_extract_deps.sh`.
+- Account connection, service start, Discord round-trip, and
+  restart/reboot were again **NOT RUN** — the run stopped at the build
+  failure before any of them could be reached. Instance, security group,
+  encrypted root EBS (`DeleteOnTermination=true`), and the temporary SSH
+  key were cleaned up after the failure was confirmed.
+- Actual deterministic results for this repair: `bash
+  tests/check_milestone0.sh` 57/57, `bash tests/bootstrap/run.sh` 26/26,
+  `bash tests/connection/run.sh` 18/18, all PASS; `git diff --check`
+  clean.
+- Full itemized results:
+  [`evidence/milestone-2-fresh-ec2/TEST_EVIDENCE.md`](evidence/milestone-2-fresh-ec2/TEST_EVIDENCE.md)
+  (Attempt 2 section, attempt-1 preserved); task context:
+  [`evidence/milestone-2-fresh-ec2/TASK.md`](evidence/milestone-2-fresh-ec2/TASK.md).
+  Independent verification remains **PENDING** as of this repair pass —
+  Passes 1-3 in `evidence/milestone-2-fresh-ec2/VERIFICATION.md` cover
+  only the attempt-1 retry fix, not this `tar` repair. Fresh EC2
+  validation as a whole remains **incomplete** and
+  `DEFINITION_OF_DONE.md`'s Fresh EC2 item remains unchecked; a fresh,
+  real re-run against this fix is still required.
+
 ### 2026-08-21 — Fresh EC2 validation: first real run, defect repair
 
 - The first authorized Fresh EC2 runtime validation of Milestone 1 +
